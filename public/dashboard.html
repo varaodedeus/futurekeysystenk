@@ -132,7 +132,6 @@
             padding: 32px;
             border-radius: 20px;
             border: 1px solid rgba(148, 163, 184, 0.1);
-            cursor: pointer;
             transition: all 0.3s ease;
         }
         
@@ -140,11 +139,6 @@
             transform: translateY(-4px);
             border-color: var(--primary);
             box-shadow: 0 20px 40px rgba(14, 165, 233, 0.2);
-        }
-        
-        .project-card.selected {
-            border-color: var(--secondary);
-            box-shadow: 0 20px 40px rgba(139, 92, 246, 0.3);
         }
         
         .project-card h3 {
@@ -294,6 +288,12 @@
             background: rgba(16, 185, 129, 0.1);
             color: var(--success);
             border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+        
+        .status.pending {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+            border: 1px solid rgba(245, 158, 11, 0.3);
         }
         
         .status.expired {
@@ -574,23 +574,32 @@
                         grid.innerHTML = '<div class="empty-state"><h3>Nenhum projeto ainda</h3><p>Crie seu primeiro projeto para começar!</p></div>';
                     } else {
                         grid.innerHTML = data.projects.map(p => `
-                            <div class="project-card" onclick="selectProject('${p.id}', '${p.name}')">
-                                <h3>${p.name}</h3>
-                                <p>${p.description || 'Sem descrição'}</p>
-                                <div class="project-stats">
-                                    <div class="stat">
-                                        <span class="stat-value">${p.total_keys}</span>
-                                        <span class="stat-label">Keys</span>
-                                    </div>
-                                    <div class="stat">
-                                        <span class="stat-value">${p.active_keys}</span>
-                                        <span class="stat-label">Ativas</span>
-                                    </div>
-                                    <div class="stat">
-                                        <span class="stat-value">${p.total_validations}</span>
-                                        <span class="stat-label">Validações</span>
+                            <div class="project-card">
+                                <div onclick="selectProject('${p.id}', '${p.name}')" style="cursor: pointer;">
+                                    <h3>${p.name}</h3>
+                                    <p>${p.description || 'Sem descrição'}</p>
+                                    <div class="project-stats">
+                                        <div class="stat">
+                                            <span class="stat-value">${p.total_keys}</span>
+                                            <span class="stat-label">Keys</span>
+                                        </div>
+                                        <div class="stat">
+                                            <span class="stat-value">${p.active_keys}</span>
+                                            <span class="stat-label">Ativas</span>
+                                        </div>
+                                        <div class="stat">
+                                            <span class="stat-value">${p.total_validations}</span>
+                                            <span class="stat-label">Validações</span>
+                                        </div>
                                     </div>
                                 </div>
+                                <button 
+                                    class="btn-primary" 
+                                    style="width: 100%; margin-top: 20px;" 
+                                    onclick="event.stopPropagation(); showLoaderCode('${p.id}', '${p.name}')"
+                                >
+                                    📋 Ver Código
+                                </button>
                             </div>
                         `).join('');
                     }
@@ -629,16 +638,16 @@
                     } else {
                         tbody.innerHTML = data.keys.map(k => `
                             <tr>
-                                <td><span class="key-code">${k.key_code}</span></td>
+                                <td><span class="key-code">${k.key}</span></td>
                                 <td><span class="status ${k.status}">${k.status}</span></td>
                                 <td>${k.hwid || '-'}</td>
                                 <td>${k.duration === 0 ? 'Lifetime' : k.duration + ' dias'}</td>
-                                <td>${k.expires_at ? new Date(k.expires_at).toLocaleDateString() : 'Nunca'}</td>
-                                <td>${k.usage_count || 0}</td>
+                                <td>${k.expiresAt ? new Date(k.expiresAt).toLocaleDateString() : 'Pendente'}</td>
+                                <td>${k.usageCount || 0}</td>
                                 <td>
                                     <div class="key-actions">
-                                        ${k.hwid ? `<button class="btn-small btn-reset" onclick="resetHWID('${k.id}')">Reset HWID</button>` : ''}
-                                        <button class="btn-small btn-delete" onclick="deleteKey('${k.id}')">Deletar</button>
+                                        ${k.hwid ? `<button class="btn-small btn-reset" onclick="resetHWID('${k._id}')">Reset HWID</button>` : ''}
+                                        <button class="btn-small btn-delete" onclick="deleteKey('${k._id}')">Deletar</button>
                                     </div>
                                 </td>
                             </tr>
@@ -753,6 +762,63 @@
         function logout() {
             localStorage.clear();
             window.location.href = '/';
+        }
+
+        // Mostrar código do loader
+        function showLoaderCode(projectId, projectName) {
+            const modal = document.createElement('div');
+            modal.className = 'modal show';
+            modal.style.zIndex = '2000';
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 800px;">
+                    <h3>📋 Código do Loader - ${projectName}</h3>
+                    <p style="color: #94a3b8; margin: 20px 0; font-size: 16px;">
+                        Copie este código e hospede no Pastebin, GitHub Gist ou qualquer site:
+                    </p>
+                    
+                    <div style="background: rgba(30, 41, 59, 0.9); padding: 24px; border-radius: 12px; margin: 24px 0; border: 1px solid rgba(148, 163, 184, 0.2);">
+                        <code id="loaderCode" style="font-family: 'Space Mono', monospace; font-size: 15px; color: #10b981; display: block; white-space: pre-wrap; word-break: break-all; line-height: 1.6;">loadstring(game:HttpGet("${window.location.origin}/loader/${projectId}"))();</code>
+                    </div>
+                    
+                    <div style="background: rgba(139, 92, 246, 0.15); padding: 20px; border-radius: 12px; border: 1px solid rgba(139, 92, 246, 0.4); margin: 24px 0;">
+                        <p style="font-size: 15px; color: #c4b5fd; margin: 0; line-height: 1.6;">
+                            💡 <strong>Como usar:</strong><br>
+                            1. Copie o código acima<br>
+                            2. Cole no Pastebin (pastebin.com/raw/...)<br>
+                            3. Compartilhe o link do Pastebin com seus usuários<br>
+                            4. Eles rodam: <code style="background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 4px;">loadstring(game:HttpGet("LINK_DO_PASTEBIN"))()</code>
+                        </p>
+                    </div>
+                    
+                    <div style="background: rgba(14, 165, 233, 0.15); padding: 20px; border-radius: 12px; border: 1px solid rgba(14, 165, 233, 0.4); margin: 24px 0;">
+                        <p style="font-size: 14px; color: #7dd3fc; margin: 0; line-height: 1.6;">
+                            ℹ️ <strong>Importante:</strong> Cada vez que o usuário roda o script, uma UI aparecerá pedindo a key. O período só começa a contar após a primeira validação!
+                        </p>
+                    </div>
+                    
+                    <div class="modal-actions" style="margin-top: 32px;">
+                        <button type="button" class="btn-secondary" onclick="this.closest('.modal').remove()">Fechar</button>
+                        <button type="button" class="btn-primary" onclick="copyLoaderCode()">📋 Copiar Código</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        function copyLoaderCode() {
+            const code = document.getElementById('loaderCode').textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = '✅ Copiado!';
+                btn.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.style.background = '';
+                }, 2000);
+            }).catch(() => {
+                alert('Erro ao copiar. Copie manualmente!');
+            });
         }
 
         loadProjects();
