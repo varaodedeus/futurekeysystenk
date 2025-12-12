@@ -59,17 +59,17 @@ router.post('/generate-key', authMiddleware, async (req, res) => {
     }
 
     const durationDays = parseInt(duration) || 0;
-    const expiresAt = durationDays === 0 ? null : new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000);
-
+    // Não define expiresAt até primeira validação
     const result = await db.collection('keys').insertOne({
       projectId: new ObjectId(projectId),
       userId: new ObjectId(req.user.userId),
       key,
       hwid: null,
       duration: durationDays,
-      status: 'active',
+      status: 'pending', // pending até primeira validação
       createdAt: new Date(),
-      expiresAt,
+      expiresAt: null, // só seta na primeira validação
+      firstUsedAt: null,
       lastUsed: null,
       usageCount: 0,
       note: note || ''
@@ -77,7 +77,7 @@ router.post('/generate-key', authMiddleware, async (req, res) => {
 
     await db.collection('projects').updateOne(
       { _id: new ObjectId(projectId) },
-      { $inc: { 'stats.totalKeys': 1, 'stats.activeKeys': 1 } }
+      { $inc: { 'stats.totalKeys': 1 } } // Só incrementa activeKeys na primeira validação
     );
 
     res.status(201).json({
@@ -180,6 +180,7 @@ router.post('/validate-key', async (req, res) => {
       timestamp: new Date()
     };
 
+    // Checar se key existe
     if (!keyDoc) {
       logEntry.action = 'failed';
       logEntry.reason = 'Key não encontrada';
@@ -187,6 +188,7 @@ router.post('/validate-key', async (req, res) => {
       return res.status(404).json({ success: false, error: 'Key não encontrada' });
     }
 
+    // Checar se foi banida
     if (keyDoc.status === 'banned') {
       logEntry.action = 'banned';
       logEntry.reason = 'Key banida';
@@ -194,6 +196,7 @@ router.post('/validate-key', async (req, res) => {
       return res.status(403).json({ success: false, error: 'Key foi banida' });
     }
 
+    // Checar expiração (se já foi ativada)
     if (keyDoc.expiresAt && new Date() > new Date(keyDoc.expiresAt)) {
       await db.collection('keys').updateOne(
         { _id: keyDoc._id },
@@ -205,21 +208,42 @@ router.post('/validate-key', async (req, res) => {
       return res.status(403).json({ success: false, error: 'Key expirou' });
     }
 
+    // PRIMEIRA VALIDAÇÃO (registrar HWID e iniciar período)
     if (keyDoc.hwid === null) {
+      const now = new Date();
+      const expiresAt = keyDoc.duration === 0 ? null : new Date(now.getTime() + keyDoc.duration * 24 * 60 * 60 * 1000);
+      
       await db.collection('keys').updateOne(
         { _id: keyDoc._id },
         { 
-          $set: { hwid, lastUsed: new Date() },
+          $set: { 
+            hwid, 
+            status: 'active',
+            firstUsedAt: now,
+            lastUsed: now,
+            expiresAt: expiresAt
+          },
           $inc: { usageCount: 1 }
         }
       );
+      
       logEntry.action = 'validated';
-      logEntry.reason = 'HWID registrado';
+      logEntry.reason = 'HWID registrado e período iniciado';
+      
+      // Incrementar activeKeys na primeira validação
+      await db.collection('projects').updateOne(
+        { _id: new ObjectId(projectId) },
+        { $inc: { 'stats.activeKeys': 1 } }
+      );
+      
+    // HWID não corresponde
     } else if (keyDoc.hwid !== hwid) {
       logEntry.action = 'hwid_mismatch';
       logEntry.reason = `HWID esperado: ${keyDoc.hwid}, recebido: ${hwid}`;
       await db.collection('logs').insertOne(logEntry);
       return res.status(403).json({ success: false, error: 'HWID não corresponde' });
+      
+    // Validação normal (já tem HWID)
     } else {
       await db.collection('keys').updateOne(
         { _id: keyDoc._id },
