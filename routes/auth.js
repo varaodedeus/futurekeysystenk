@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
 const router = express.Router();
-const uri = process.env.MONGODB_URI;
+const uri = "mongodb+srv://swelokumesd81_db_user:Sempre001234@cluster0.sxwnhrt.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 const JWT_SECRET = process.env.JWT_SECRET;
 
 // Login
