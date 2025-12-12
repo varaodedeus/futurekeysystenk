@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - AuthGuard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f6fa;
+            min-height: 100vh;
+        }
+        
+        /* Navbar */
+        nav {
+            background: white;
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        nav h1 {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 24px;
+        }
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        .user-info {
+            color: #666;
+            font-size: 14px;
+        }
+        .logout-btn {
+            padding: 8px 20px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .logout-btn:hover {
+            background: #c0392b;
+        }
+        
+        /* Content */
+        .content {
+            max-width: 1400px;
+            margin: 40px auto;
+            padding: 0 40px;
+        }
+        
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .header h2 {
+            color: #333;
+            font-size: 28px;
+        }
+        .btn-primary {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+        }
+        
+        /* Projects Grid */
+        #projectsGrid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+        .project-card {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .project-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+        }
+        .project-card.selected {
+            border: 2px solid #667eea;
+        }
+        .project-card h3 {
+            color: #333;
+            margin-bottom: 12px;
+            font-size: 20px;
+        }
+        .project-card p {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 16px;
+        }
+        .project-stats {
+            display: flex;
+            gap: 20px;
+            font-size: 13px;
+        }
+        .stat {
+            color: #667eea;
+            font-weight: 600;
+        }
+        
+        /* Keys Section */
+        #keysSection {
+            display: none;
+        }
+        #keysSection.show {
+            display: block;
+        }
+        .keys-header {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .keys-header h3 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        .keys-header p {
+            color: #666;
+            font-size: 14px;
+        }
+        .keys-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+        }
+        .btn-secondary {
+            padding: 10px 20px;
+            background: #95a5a6;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .btn-secondary:hover {
+            background: #7f8c8d;
+        }
+        
+        /* Keys Table */
+        .keys-table {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th {
+            background: #f8f9fa;
+            padding: 16px;
+            text-align: left;
+            font-size: 13px;
+            font-weight: 600;
+            color: #666;
+            text-transform: uppercase;
+        }
+        td {
+            padding: 16px;
+            border-top: 1px solid #f0f0f0;
+            font-size: 14px;
+        }
+        .key-code {
+            font-family: 'Courier New', monospace;
+            background: #f8f9fa;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #667eea;
+        }
+        .status {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .status.active {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.expired {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .status.banned {
+            background: #d6d8db;
+            color: #383d41;
+        }
+        .key-actions {
+            display: flex;
+            gap: 8px;
+        }
+        .btn-small {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .btn-reset {
+            background: #3498db;
+            color: white;
+        }
+        .btn-delete {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal.show {
+            display: flex;
+        }
+        .modal-content {
+            background: white;
+            padding: 32px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 500px;
+        }
+        .modal-content h3 {
+            color: #333;
+            margin-bottom: 24px;
+            font-size: 22px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            color: #333;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            margin-top: 24px;
+        }
+        
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+        .empty-state h3 {
+            font-size: 20px;
+            margin-bottom: 12px;
+        }
+        .empty-state p {
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <h1>🔐 AuthGuard</h1>
+        <div class="nav-right">
+            <span class="user-info">👤 <span id="username"></span></span>
+            <button class="logout-btn" onclick="logout()">Sair</button>
+        </div>
+    </nav>
+
+    <div class="content">
+        <!-- Projects Section -->
+        <div id="projectsSection">
+            <div class="header">
+                <h2>Meus Projetos</h2>
+                <button class="btn-primary" onclick="showModal('createProject')">+ Novo Projeto</button>
+            </div>
+            <div id="projectsGrid"></div>
+        </div>
+
+        <!-- Keys Section -->
+        <div id="keysSection">
+            <div class="keys-header">
+                <h3 id="projectName"></h3>
+                <p id="projectId"></p>
+                <div class="keys-actions">
+                    <button class="btn-primary" onclick="showModal('generateKey')">+ Gerar Key</button>
+                    <button class="btn-secondary" onclick="backToProjects()">← Voltar</button>
+                </div>
+            </div>
+            <div class="keys-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Key</th>
+                            <th>Status</th>
+                            <th>HWID</th>
+                            <th>Duração</th>
+                            <th>Expira Em</th>
+                            <th>Usos</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="keysTable"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Create Project -->
+    <div id="modalCreateProject" class="modal">
+        <div class="modal-content">
+            <h3>Criar Novo Projeto</h3>
+            <form id="formCreateProject" onsubmit="createProject(event)">
+                <div class="form-group">
+                    <label>Nome do Projeto *</label>
+                    <input type="text" id="projectNameInput" placeholder="Ex: Meu Script Premium" required>
+                </div>
+                <div class="form-group">
+                    <label>Descrição</label>
+                    <textarea id="projectDescInput" rows="3" placeholder="Opcional"></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeModal('createProject')">Cancelar</button>
+                    <button type="submit" class="btn-primary">Criar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Generate Key -->
+    <div id="modalGenerateKey" class="modal">
+        <div class="modal-content">
+            <h3>Gerar Nova Key</h3>
+            <form id="formGenerateKey" onsubmit="generateKey(event)">
+                <div class="form-group">
+                    <label>Duração (dias) *</label>
+                    <input type="number" id="keyDurationInput" placeholder="0 = Lifetime" min="0" value="30" required>
+                </div>
+                <div class="form-group">
+                    <label>Nota</label>
+                    <input type="text" id="keyNoteInput" placeholder="Ex: Cliente João, Pedido #123">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeModal('generateKey')">Cancelar</button>
+                    <button type="submit" class="btn-primary">Gerar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let token = localStorage.getItem('token');
+        let user = JSON.parse(localStorage.getItem('user') || '{}');
+        let selectedProjectId = null;
+
+        if (!token) {
+            window.location.href = '/';
+        }
+
+        document.getElementById('username').textContent = user.username || 'Usuário';
+
+        async function loadProjects() {
+            try {
+                const res = await fetch('/api/list-projects', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    const grid = document.getElementById('projectsGrid');
+                    if (data.projects.length === 0) {
+                        grid.innerHTML = '<div class="empty-state"><h3>Nenhum projeto ainda</h3><p>Crie seu primeiro projeto para começar!</p></div>';
+                    } else {
+                        grid.innerHTML = data.projects.map(p => `
+                            <div class="project-card" onclick="selectProject('${p._id}', '${p.name}')">
+                                <h3>${p.name}</h3>
+                                <p>${p.description || 'Sem descrição'}</p>
+                                <div class="project-stats">
+                                    <span class="stat">Keys: ${p.stats.totalKeys}</span>
+                                    <span class="stat">Ativas: ${p.stats.activeKeys}</span>
+                                    <span class="stat">Validações: ${p.stats.totalValidations}</span>
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao carregar projetos:', error);
+            }
+        }
+
+        async function selectProject(id, name) {
+            selectedProjectId = id;
+            document.getElementById('projectName').textContent = name;
+            document.getElementById('projectId').textContent = `ID: ${id}`;
+            document.getElementById('projectsSection').style.display = 'none';
+            document.getElementById('keysSection').classList.add('show');
+            await loadKeys();
+        }
+
+        function backToProjects() {
+            selectedProjectId = null;
+            document.getElementById('keysSection').classList.remove('show');
+            document.getElementById('projectsSection').style.display = 'block';
+        }
+
+        async function loadKeys() {
+            try {
+                const res = await fetch(`/api/list-keys?projectId=${selectedProjectId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    const tbody = document.getElementById('keysTable');
+                    if (data.keys.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:40px; color:#999;">Nenhuma key gerada ainda</td></tr>';
+                    } else {
+                        tbody.innerHTML = data.keys.map(k => `
+                            <tr>
+                                <td><span class="key-code">${k.key}</span></td>
+                                <td><span class="status ${k.status}">${k.status}</span></td>
+                                <td>${k.hwid || '-'}</td>
+                                <td>${k.duration === 0 ? 'Lifetime' : k.duration + ' dias'}</td>
+                                <td>${k.expiresAt ? new Date(k.expiresAt).toLocaleDateString() : 'Nunca'}</td>
+                                <td>${k.usageCount || 0}</td>
+                                <td>
+                                    <div class="key-actions">
+                                        ${k.hwid ? `<button class="btn-small btn-reset" onclick="resetHWID('${k._id}')">Reset HWID</button>` : ''}
+                                        <button class="btn-small btn-delete" onclick="deleteKey('${k._id}')">Deletar</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('');
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao carregar keys:', error);
+            }
+        }
+
+        function showModal(modal) {
+            document.getElementById('modal' + modal.charAt(0).toUpperCase() + modal.slice(1)).classList.add('show');
+        }
+
+        function closeModal(modal) {
+            document.getElementById('modal' + modal.charAt(0).toUpperCase() + modal.slice(1)).classList.remove('show');
+        }
+
+        async function createProject(e) {
+            e.preventDefault();
+            const name = document.getElementById('projectNameInput').value;
+            const description = document.getElementById('projectDescInput').value;
+
+            try {
+                const res = await fetch('/api/create-project', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ name, description })
+                });
+
+                if (res.ok) {
+                    closeModal('createProject');
+                    document.getElementById('formCreateProject').reset();
+                    await loadProjects();
+                }
+            } catch (error) {
+                alert('Erro ao criar projeto');
+            }
+        }
+
+        async function generateKey(e) {
+            e.preventDefault();
+            const duration = document.getElementById('keyDurationInput').value;
+            const note = document.getElementById('keyNoteInput').value;
+
+            try {
+                const res = await fetch('/api/generate-key', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ projectId: selectedProjectId, duration, note })
+                });
+
+                if (res.ok) {
+                    closeModal('generateKey');
+                    document.getElementById('formGenerateKey').reset();
+                    await loadKeys();
+                    await loadProjects(); // Atualizar stats
+                }
+            } catch (error) {
+                alert('Erro ao gerar key');
+            }
+        }
+
+        async function resetHWID(keyId) {
+            if (!confirm('Resetar o HWID desta key?')) return;
+
+            try {
+                const res = await fetch('/api/reset-hwid', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ keyId })
+                });
+
+                if (res.ok) {
+                    await loadKeys();
+                }
+            } catch (error) {
+                alert('Erro ao resetar HWID');
+            }
+        }
+
+        async function deleteKey(keyId) {
+            if (!confirm('Deletar esta key permanentemente?')) return;
+
+            try {
+                const res = await fetch('/api/delete-key', {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ keyId })
+                });
+
+                if (res.ok) {
+                    await loadKeys();
+                    await loadProjects();
+                }
+            } catch (error) {
+                alert('Erro ao deletar key');
+            }
+        }
+
+        function logout() {
+            localStorage.clear();
+            window.location.href = '/';
+        }
+
+        loadProjects();
+    </script>
+</body>
+</html>
