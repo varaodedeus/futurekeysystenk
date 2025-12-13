@@ -1,0 +1,27 @@
+{
+  "name": "authguard-obfuscator",
+  "version": "1.0.0",
+  "description": "Obfuscador Lua avançado para AuthGuard",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test.js"
+  },
+  "keywords": [
+    "lua",
+    "obfuscator",
+    "authguard",
+    "roblox"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "mongodb": "^6.3.0",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "nanoid": "^3.3.7"
+  }
+}
