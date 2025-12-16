@@ -59,7 +59,7 @@ function viewLoader(projectId) {
     const host = window.location.origin;
     const loaderURL = `${host}/loader/${projectId}`;
     
-    document.getElementById('loaderTitle').textContent = `📋 Loader URL`;
+    document.getElementById('loaderTitle').textContent = '📋 Loader URL';
     document.getElementById('loaderCodeContent').textContent = loaderURL;
     
     showModal('viewLoader');
@@ -281,8 +281,10 @@ async function loadKeys() {
 async function generateKey(e) {
     e.preventDefault();
     
-    if (!currentKeyProject) {
-        alert('Selecione um projeto primeiro!');
+    const projectId = document.getElementById('generateKeyProjectSelect').value;
+    
+    if (!projectId) {
+        alert('Selecione um projeto!');
         return;
     }
 
@@ -296,13 +298,17 @@ async function generateKey(e) {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify({ projectId: currentKeyProject, duration, note })
+            body: JSON.stringify({ projectId: projectId, duration, note })
         });
 
         if (res.ok) {
+            alert('✅ Key gerada com sucesso!');
             closeModal('generateKey');
             document.getElementById('formGenerateKey').reset();
-            await loadKeys();
+            
+            if (currentKeyProject === projectId) {
+                await loadKeys();
+            }
         }
     } catch (error) {
         alert('Erro ao gerar key');
@@ -322,7 +328,10 @@ async function resetHWID(keyId) {
             body: JSON.stringify({ keyId })
         });
 
-        if (res.ok) await loadKeys();
+        if (res.ok) {
+            alert('✅ HWID resetado!');
+            await loadKeys();
+        }
     } catch (error) {
         alert('Erro ao resetar HWID');
     }
@@ -341,7 +350,10 @@ async function deleteKey(keyId) {
             body: JSON.stringify({ keyId })
         });
 
-        if (res.ok) await loadKeys();
+        if (res.ok) {
+            alert('✅ Key deletada!');
+            await loadKeys();
+        }
     } catch (error) {
         alert('Erro ao deletar key');
     }
@@ -349,6 +361,17 @@ async function deleteKey(keyId) {
 
 function showModal(modal) {
     const modalId = 'modal' + modal.charAt(0).toUpperCase() + modal.slice(1);
+    
+    if (modal === 'generateKey') {
+        const select = document.getElementById('generateKeyProjectSelect');
+        select.innerHTML = '<option value="">Selecione um projeto</option>' +
+            allProjects.map(p => `<option value="${p._id}">${p.name}</option>`).join('');
+        
+        if (currentKeyProject) {
+            select.value = currentKeyProject;
+        }
+    }
+    
     document.getElementById(modalId).classList.add('show');
 }
 
