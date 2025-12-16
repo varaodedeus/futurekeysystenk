@@ -210,37 +210,51 @@ router.post('/reset-hwid', authMiddleware, async (req, res) => {
   }
 });
 
-// VALIDAR KEY
+// ============================================
+// VALIDAR KEY - ENDPOINT PÚBLICO (SEM AUTH)
+// ============================================
 router.post('/validate-key', async (req, res) => {
   let client;
   try {
+    console.log('🔍 VALIDATE-KEY CHAMADO!');
+    console.log('🔍 BODY:', req.body);
+    
     const { key, hwid, projectId } = req.body;
 
     if (!key || !hwid) {
+      console.log('❌ Key ou HWID faltando!');
       return res.status(400).json({ 
         success: false, 
         error: 'Key e HWID obrigatórios' 
       });
     }
 
+    console.log('🔍 Conectando ao MongoDB...');
     client = await MongoClient.connect(uri);
     const db = client.db();
 
+    console.log('🔍 Buscando key:', key);
     const keyDoc = await db.collection('keys').findOne({ key });
 
     if (!keyDoc) {
+      console.log('❌ Key não encontrada!');
       return res.status(404).json({ success: false, error: 'Key inválida' });
     }
 
+    console.log('✅ Key encontrada:', keyDoc);
+
     if (projectId && keyDoc.projectId.toString() !== projectId) {
+      console.log('❌ Key não pertence ao projeto!');
       return res.status(403).json({ success: false, error: 'Key não pertence a este projeto' });
     }
 
     if (keyDoc.status === 'banned') {
+      console.log('❌ Key banida!');
       return res.status(403).json({ success: false, error: 'Key banida' });
     }
 
     if (keyDoc.expiresAt && new Date() > new Date(keyDoc.expiresAt)) {
+      console.log('❌ Key expirada!');
       await db.collection('keys').updateOne(
         { _id: keyDoc._id },
         { $set: { status: 'expired' } }
@@ -249,6 +263,8 @@ router.post('/validate-key', async (req, res) => {
     }
 
     if (keyDoc.hwid === null) {
+      console.log('✅ Primeira validação! Registrando HWID...');
+      
       const now = new Date();
       const expiresAt = keyDoc.duration === 0 ? null : new Date(now.getTime() + keyDoc.duration * 24 * 60 * 60 * 1000);
       
@@ -276,10 +292,15 @@ router.post('/validate-key', async (req, res) => {
         }
       );
       
+      console.log('✅ HWID registrado com sucesso!');
+      
     } else if (keyDoc.hwid !== hwid) {
+      console.log('❌ HWID não corresponde!');
       return res.status(403).json({ success: false, error: 'HWID não corresponde' });
       
     } else {
+      console.log('✅ HWID correto! Atualizando uso...');
+      
       await db.collection('keys').updateOne(
         { _id: keyDoc._id },
         { 
@@ -292,7 +313,11 @@ router.post('/validate-key', async (req, res) => {
         { _id: keyDoc.projectId },
         { $inc: { 'stats.totalValidations': 1 } }
       );
+      
+      console.log('✅ Uso atualizado!');
     }
+
+    console.log('✅✅✅ VALIDAÇÃO CONCLUÍDA COM SUCESSO! ✅✅✅');
 
     res.status(200).json({
       success: true,
@@ -300,7 +325,7 @@ router.post('/validate-key', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Validate key error:', error);
+    console.error('❌ ERRO NO VALIDATE-KEY:', error);
     res.status(500).json({ success: false, error: 'Erro no servidor' });
   } finally {
     if (client) await client.close();
