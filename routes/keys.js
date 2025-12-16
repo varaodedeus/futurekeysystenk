@@ -7,7 +7,6 @@ const router = express.Router();
 const uri = 'mongodb+srv://authguard:slazin123@cluster0.sxwnhrt.mongodb.net/baodms?retryWrites=true&w=majority';
 const JWT_SECRET = 'authguard_jwt_secret_2024_super_seguro_X9kP2mZq';
 
-// Middleware de autenticação
 const authMiddleware = async (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ success: false, error: 'Token não fornecido' });
@@ -22,30 +21,23 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
-// GERAR KEY
 router.post('/generate-key', authMiddleware, async (req, res) => {
   let client;
   try {
     const { projectId, duration, note } = req.body;
-
     if (!projectId || duration === undefined) {
       return res.status(400).json({ success: false, error: 'ProjectId e duration são obrigatórios' });
     }
-
     client = await MongoClient.connect(uri);
     const db = client.db();
-
     const project = await db.collection('projects').findOne({
       _id: new ObjectId(projectId),
       userId: new ObjectId(req.user.userId)
     });
-
     if (!project) {
       return res.status(404).json({ success: false, error: 'Projeto não encontrado' });
     }
-
     const key = `AGRD-${nanoid(4)}-${nanoid(4)}-${nanoid(4)}`.toUpperCase();
-
     const keyDoc = {
       key,
       projectId: new ObjectId(projectId),
@@ -60,16 +52,12 @@ router.post('/generate-key', authMiddleware, async (req, res) => {
       usageCount: 0,
       note: note || null
     };
-
     await db.collection('keys').insertOne(keyDoc);
-
     await db.collection('projects').updateOne(
       { _id: new ObjectId(projectId) },
       { $inc: { 'stats.totalKeys': 1 } }
     );
-
     res.status(201).json({ success: true, key, keyId: keyDoc._id });
-
   } catch (error) {
     console.error('Generate key error:', error);
     res.status(500).json({ success: false, error: 'Erro ao gerar key' });
@@ -78,35 +66,27 @@ router.post('/generate-key', authMiddleware, async (req, res) => {
   }
 });
 
-// LISTAR KEYS
 router.get('/list-keys', authMiddleware, async (req, res) => {
   let client;
   try {
     const { projectId } = req.query;
-
     if (!projectId) {
       return res.status(400).json({ success: false, error: 'ProjectId é obrigatório' });
     }
-
     client = await MongoClient.connect(uri);
     const db = client.db();
-
     const project = await db.collection('projects').findOne({
       _id: new ObjectId(projectId),
       userId: new ObjectId(req.user.userId)
     });
-
     if (!project) {
       return res.status(404).json({ success: false, error: 'Projeto não encontrado' });
     }
-
     const keys = await db.collection('keys')
       .find({ projectId: new ObjectId(projectId) })
       .sort({ createdAt: -1 })
       .toArray();
-
     res.status(200).json({ success: true, keys });
-
   } catch (error) {
     console.error('List keys error:', error);
     res.status(500).json({ success: false, error: 'Erro ao listar keys' });
@@ -115,50 +95,38 @@ router.get('/list-keys', authMiddleware, async (req, res) => {
   }
 });
 
-// DELETAR KEY
 router.delete('/delete-key', authMiddleware, async (req, res) => {
   let client;
   try {
     const { keyId } = req.body;
-
     if (!keyId) {
       return res.status(400).json({ success: false, error: 'KeyId é obrigatório' });
     }
-
     client = await MongoClient.connect(uri);
     const db = client.db();
-
     const keyDoc = await db.collection('keys').findOne({ _id: new ObjectId(keyId) });
-
     if (!keyDoc) {
       return res.status(404).json({ success: false, error: 'Key não encontrada' });
     }
-
     const project = await db.collection('projects').findOne({
       _id: keyDoc.projectId,
       userId: new ObjectId(req.user.userId)
     });
-
     if (!project) {
       return res.status(403).json({ success: false, error: 'Não autorizado' });
     }
-
     await db.collection('keys').deleteOne({ _id: new ObjectId(keyId) });
-
     await db.collection('projects').updateOne(
       { _id: keyDoc.projectId },
       { $inc: { 'stats.totalKeys': -1 } }
     );
-
     if (keyDoc.status === 'active') {
       await db.collection('projects').updateOne(
         { _id: keyDoc.projectId },
         { $inc: { 'stats.activeKeys': -1 } }
       );
     }
-
     res.status(200).json({ success: true, message: 'Key deletada com sucesso' });
-
   } catch (error) {
     console.error('Delete key error:', error);
     res.status(500).json({ success: false, error: 'Erro ao deletar key' });
@@ -167,41 +135,31 @@ router.delete('/delete-key', authMiddleware, async (req, res) => {
   }
 });
 
-// RESETAR HWID
 router.post('/reset-hwid', authMiddleware, async (req, res) => {
   let client;
   try {
     const { keyId } = req.body;
-
     if (!keyId) {
       return res.status(400).json({ success: false, error: 'KeyId é obrigatório' });
     }
-
     client = await MongoClient.connect(uri);
     const db = client.db();
-
     const keyDoc = await db.collection('keys').findOne({ _id: new ObjectId(keyId) });
-
     if (!keyDoc) {
       return res.status(404).json({ success: false, error: 'Key não encontrada' });
     }
-
     const project = await db.collection('projects').findOne({
       _id: keyDoc.projectId,
       userId: new ObjectId(req.user.userId)
     });
-
     if (!project) {
       return res.status(403).json({ success: false, error: 'Não autorizado' });
     }
-
     await db.collection('keys').updateOne(
       { _id: new ObjectId(keyId) },
       { $set: { hwid: null } }
     );
-
     res.status(200).json({ success: true, message: 'HWID resetado com sucesso' });
-
   } catch (error) {
     console.error('Reset HWID error:', error);
     res.status(500).json({ success: false, error: 'Erro ao resetar HWID' });
@@ -210,122 +168,55 @@ router.post('/reset-hwid', authMiddleware, async (req, res) => {
   }
 });
 
-// ============================================
-// VALIDAR KEY - ENDPOINT PÚBLICO (SEM AUTH)
-// ============================================
 router.post('/validate-key', async (req, res) => {
   let client;
   try {
-    console.log('🔍 VALIDATE-KEY CHAMADO!');
-    console.log('🔍 BODY:', req.body);
-    
     const { key, hwid, projectId } = req.body;
-
     if (!key || !hwid) {
-      console.log('❌ Key ou HWID faltando!');
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Key e HWID obrigatórios' 
-      });
+      return res.status(400).json({ success: false, error: 'Key e HWID obrigatórios' });
     }
-
-    console.log('🔍 Conectando ao MongoDB...');
     client = await MongoClient.connect(uri);
     const db = client.db();
-
-    console.log('🔍 Buscando key:', key);
     const keyDoc = await db.collection('keys').findOne({ key });
-
     if (!keyDoc) {
-      console.log('❌ Key não encontrada!');
       return res.status(404).json({ success: false, error: 'Key inválida' });
     }
-
-    console.log('✅ Key encontrada:', keyDoc);
-
     if (projectId && keyDoc.projectId.toString() !== projectId) {
-      console.log('❌ Key não pertence ao projeto!');
       return res.status(403).json({ success: false, error: 'Key não pertence a este projeto' });
     }
-
     if (keyDoc.status === 'banned') {
-      console.log('❌ Key banida!');
       return res.status(403).json({ success: false, error: 'Key banida' });
     }
-
     if (keyDoc.expiresAt && new Date() > new Date(keyDoc.expiresAt)) {
-      console.log('❌ Key expirada!');
-      await db.collection('keys').updateOne(
-        { _id: keyDoc._id },
-        { $set: { status: 'expired' } }
-      );
+      await db.collection('keys').updateOne({ _id: keyDoc._id }, { $set: { status: 'expired' } });
       return res.status(403).json({ success: false, error: 'Key expirada' });
     }
-
     if (keyDoc.hwid === null) {
-      console.log('✅ Primeira validação! Registrando HWID...');
-      
       const now = new Date();
       const expiresAt = keyDoc.duration === 0 ? null : new Date(now.getTime() + keyDoc.duration * 24 * 60 * 60 * 1000);
-      
       await db.collection('keys').updateOne(
         { _id: keyDoc._id },
-        { 
-          $set: { 
-            hwid, 
-            status: 'active',
-            firstUsedAt: now,
-            lastUsed: now,
-            expiresAt: expiresAt
-          },
-          $inc: { usageCount: 1 }
-        }
+        { $set: { hwid, status: 'active', firstUsedAt: now, lastUsed: now, expiresAt: expiresAt }, $inc: { usageCount: 1 } }
       );
-      
       await db.collection('projects').updateOne(
         { _id: keyDoc.projectId },
-        { 
-          $inc: { 
-            'stats.activeKeys': 1,
-            'stats.totalValidations': 1
-          }
-        }
+        { $inc: { 'stats.activeKeys': 1, 'stats.totalValidations': 1 } }
       );
-      
-      console.log('✅ HWID registrado com sucesso!');
-      
     } else if (keyDoc.hwid !== hwid) {
-      console.log('❌ HWID não corresponde!');
       return res.status(403).json({ success: false, error: 'HWID não corresponde' });
-      
     } else {
-      console.log('✅ HWID correto! Atualizando uso...');
-      
       await db.collection('keys').updateOne(
         { _id: keyDoc._id },
-        { 
-          $set: { lastUsed: new Date() },
-          $inc: { usageCount: 1 }
-        }
+        { $set: { lastUsed: new Date() }, $inc: { usageCount: 1 } }
       );
-      
       await db.collection('projects').updateOne(
         { _id: keyDoc.projectId },
         { $inc: { 'stats.totalValidations': 1 } }
       );
-      
-      console.log('✅ Uso atualizado!');
     }
-
-    console.log('✅✅✅ VALIDAÇÃO CONCLUÍDA COM SUCESSO! ✅✅✅');
-
-    res.status(200).json({
-      success: true,
-      message: 'Key válida!'
-    });
-
+    res.status(200).json({ success: true, message: 'Key válida!' });
   } catch (error) {
-    console.error('❌ ERRO NO VALIDATE-KEY:', error);
+    console.error('Validate key error:', error);
     res.status(500).json({ success: false, error: 'Erro no servidor' });
   } finally {
     if (client) await client.close();
