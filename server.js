@@ -7,16 +7,12 @@ import { fileURLToPath } from 'url';
 import authRoutes from './routes/auth.js';
 import projectRoutes from './routes/projects.js';
 import keyRoutes from './routes/keys.js';
-import scriptRoutes from './routes/scripts.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-// Cache para loaders
-const loaderCache = new Map();
 
 // Middlewares
 app.use(cors());
@@ -27,7 +23,6 @@ app.use(express.static('public'));
 app.use('/api', authRoutes);
 app.use('/api', projectRoutes);
 app.use('/api', keyRoutes);
-app.use('/api', scriptRoutes);
 
 // Rotas das páginas
 app.get('/', (req, res) => {
@@ -42,35 +37,35 @@ app.get('/dashboard', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
 
-// LOADER COM UI - Admin copia e cola seu script
+// LOADER - Retorna UI com campo vazio pro admin colar o script
 app.get('/loader/:projectId', (req, res) => {
   const { projectId } = req.params;
   const API_URL = `${req.protocol}://${req.get('host')}`;
   
-  console.log(`🔨 Gerando loader UI para projeto ${projectId}`);
+  console.log(`🔨 Gerando loader para projeto ${projectId}`);
   
   const loaderCode = `-- ============================================
--- AuthGuard - License Validation System
--- Projeto ID: ${projectId}
+-- AuthGuard License System
+-- Project ID: ${projectId}
 -- ============================================
 
 -- ==========================================
--- ⚠️ INPUT YOUR SCRIPT HERE ⚠️
+-- ⚠️ ADMIN: INPUT YOUR SCRIPT HERE ⚠️
 -- ==========================================
 local YOUR_SCRIPT = [[
 
--- COLE SEU SCRIPT AQUI ADMIN!
-print("Meu script executando!")
+-- Admin: Cole seu script aqui!
+print("Script executando!")
 
 ]]
 -- ==========================================
--- ⚠️ DON'T EDIT BELOW THIS LINE ⚠️
+-- ⚠️ DON'T EDIT BELOW ⚠️
 -- ==========================================
 
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-local API_URL = "${API_URL}/api/validate-key-simple"
+local API_URL = "${API_URL}/api/validate-key"
 
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "AuthGuardUI"
@@ -230,7 +225,7 @@ local function validateAndExecute()
         return
     end
     
-    notify("🔐 Validating license...", Color3.fromRGB(245, 158, 11))
+    notify("🔐 Validating...", Color3.fromRGB(245, 158, 11))
     ExecuteButton.BackgroundColor3 = Color3.fromRGB(100, 116, 139)
     ExecuteButton.Text = "⏳ VALIDATING..."
     
@@ -239,7 +234,8 @@ local function validateAndExecute()
     local success, response = pcall(function()
         local jsonRequest = HttpService:JSONEncode({
             key = key,
-            hwid = hwid
+            hwid = hwid,
+            projectId = "${projectId}"
         })
         
         local jsonResponse = HttpService:PostAsync(
@@ -253,7 +249,7 @@ local function validateAndExecute()
     end)
     
     if success and response.success then
-        notify("✅ License valid! Executing...", Color3.fromRGB(16, 185, 129))
+        notify("✅ Valid! Executing...", Color3.fromRGB(16, 185, 129))
         ExecuteButton.BackgroundColor3 = Color3.fromRGB(16, 185, 129)
         ExecuteButton.Text = "✅ EXECUTING..."
         
@@ -262,7 +258,7 @@ local function validateAndExecute()
         local scriptFunc = loadstring(YOUR_SCRIPT)
         if scriptFunc then
             scriptFunc()
-            notify("✅ Script executed!", Color3.fromRGB(16, 185, 129))
+            notify("✅ Done!", Color3.fromRGB(16, 185, 129))
             wait(2)
             ScreenGui:Destroy()
         else
@@ -301,7 +297,7 @@ CloseButton.MouseLeave:Connect(function()
     CloseButton.BackgroundColor3 = Color3.fromRGB(239, 68, 68)
 end)
 
-print("🔐 AuthGuard loaded! Enter your license key.")
+print("🔐 AuthGuard loaded!")
 `;
   
   res.setHeader('Content-Type', 'text/plain');
@@ -312,24 +308,11 @@ print("🔐 AuthGuard loaded! Enter your license key.")
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok', 
-    timestamp: new Date().toISOString(),
-    loaderCacheSize: loaderCache.size
+    timestamp: new Date().toISOString()
   });
-});
-
-// Limpar cache
-app.post('/admin/clear-cache', (req, res) => {
-  const { secret } = req.body;
-  if (secret === 'authguard_secret_2024') {
-    loaderCache.clear();
-    res.json({ success: true, message: 'Cache limpo!' });
-  } else {
-    res.status(401).json({ success: false, error: 'Não autorizado' });
-  }
 });
 
 // Iniciar servidor
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 AuthGuard rodando na porta ${PORT}`);
-  console.log(`📡 Health check: http://localhost:${PORT}/health`);
 });
