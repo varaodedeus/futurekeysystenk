@@ -608,6 +608,8 @@
     </div>
 
     <script>
+        console.log('🚀 DASHBOARD CARREGADO!');
+        
         let token = localStorage.getItem('token');
         let user = JSON.parse(localStorage.getItem('user') || '{}');
         let allProjects = [];
@@ -615,11 +617,16 @@
         let weekStatsChart = null;
         let executionsChart = null;
 
+        console.log('🔑 TOKEN:', token ? 'EXISTE' : 'NÃO EXISTE');
+        console.log('👤 USER:', user);
+
         if (!token) window.location.href = '/';
 
         document.getElementById('username').textContent = user.username || 'Usuário';
 
         function switchTab(tab) {
+            console.log('📑 MUDANDO PARA ABA:', tab);
+            
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
             
@@ -631,14 +638,22 @@
         }
 
         async function loadProjects() {
+            console.log('📁 CARREGANDO PROJETOS...');
+            
             try {
                 const res = await fetch('/api/list-projects', {
                     headers: { 'Authorization': 'Bearer ' + token }
                 });
+                
+                console.log('📁 RESPONSE STATUS:', res.status);
+                
                 const data = await res.json();
+                console.log('📁 PROJETOS RECEBIDOS:', data);
                 
                 if (data.success) {
                     allProjects = data.projects;
+                    console.log('📁 TOTAL DE PROJETOS:', allProjects.length);
+                    
                     const grid = document.getElementById('projectsGrid');
                     
                     if (data.projects.length === 0) {
@@ -663,13 +678,17 @@
                     }
                 }
             } catch (error) {
-                console.error('Erro ao carregar projetos:', error);
+                console.error('❌ ERRO AO CARREGAR PROJETOS:', error);
             }
         }
 
         function viewLoader(projectId) {
+            console.log('📋 VISUALIZANDO LOADER DO PROJETO:', projectId);
+            
             const host = window.location.origin;
             const loaderURL = host + '/loader/' + projectId;
+            
+            console.log('📋 LOADER URL:', loaderURL);
             
             document.getElementById('loaderTitle').textContent = '📋 Loader URL';
             document.getElementById('loaderCodeContent').textContent = loaderURL;
@@ -679,8 +698,11 @@
 
         async function createProject(e) {
             e.preventDefault();
+            
             const name = document.getElementById('projectNameInput').value;
             const description = document.getElementById('projectDescInput').value;
+
+            console.log('📁 CRIANDO PROJETO:', { name, description });
 
             try {
                 const res = await fetch('/api/create-project', {
@@ -692,18 +714,24 @@
                     body: JSON.stringify({ name: name, description: description })
                 });
 
+                console.log('📁 RESPONSE STATUS:', res.status);
+
                 if (res.ok) {
+                    console.log('✅ PROJETO CRIADO!');
                     closeModal('createProject');
                     document.getElementById('formCreateProject').reset();
                     await loadProjects();
                 }
             } catch (error) {
+                console.error('❌ ERRO AO CRIAR PROJETO:', error);
                 alert('Erro ao criar projeto');
             }
         }
 
         async function deleteProject(projectId, projectName) {
             if (!confirm('Deletar "' + projectName + '" permanentemente?\n\nIsso vai deletar TODAS as keys deste projeto!')) return;
+
+            console.log('🗑️ DELETANDO PROJETO:', projectId);
 
             try {
                 const res = await fetch('/api/delete-project', {
@@ -716,6 +744,7 @@
                 });
 
                 const data = await res.json();
+                console.log('🗑️ RESPONSE:', data);
 
                 if (data.success) {
                     alert('✅ Projeto deletado!');
@@ -724,16 +753,23 @@
                     alert('Erro: ' + data.error);
                 }
             } catch (error) {
+                console.error('❌ ERRO AO DELETAR:', error);
                 alert('Erro ao deletar projeto');
             }
         }
 
         async function viewAnalytics(projectId, projectName) {
+            console.log('📊 VISUALIZANDO ANALYTICS DO PROJETO:', projectId);
+            
             try {
                 const res = await fetch('/api/analytics/' + projectId, {
                     headers: { 'Authorization': 'Bearer ' + token }
                 });
+                
+                console.log('📊 RESPONSE STATUS:', res.status);
+                
                 const data = await res.json();
+                console.log('📊 ANALYTICS RECEBIDOS:', data);
                 
                 if (data.success) {
                     document.getElementById('analyticsTitle').textContent = '📊 Analytics - ' + projectName;
@@ -753,7 +789,7 @@
                     showModal('analytics');
                 }
             } catch (error) {
-                console.error('Erro ao carregar analytics:', error);
+                console.error('❌ ERRO AO CARREGAR ANALYTICS:', error);
                 alert('Erro ao carregar analytics');
             }
         }
@@ -835,16 +871,27 @@
         }
 
         async function loadProjectsForKeys() {
+            console.log('🔑 CARREGANDO PROJETOS PARA SELECT...');
+            
             await loadProjects();
             const select = document.getElementById('keyProjectSelect');
             
             select.innerHTML = '<option value="">Selecione um projeto</option>' +
                 allProjects.map(function(p) { return '<option value="' + p._id + '">' + p.name + '</option>'; }).join('');
+            
+            console.log('🔑 SELECT POPULADO COM', allProjects.length, 'PROJETOS');
         }
 
         async function loadKeys() {
             const projectId = document.getElementById('keyProjectSelect').value;
+            
+            console.log('🔑 ========================================');
+            console.log('🔑 CARREGANDO KEYS...');
+            console.log('🔑 PROJECT ID SELECIONADO:', projectId);
+            console.log('🔑 ========================================');
+            
             if (!projectId) {
+                console.log('⚠️ NENHUM PROJETO SELECIONADO');
                 document.getElementById('keysGrid').innerHTML = '<div class="empty-state"><h3>Selecione um projeto</h3></div>';
                 return;
             }
@@ -852,18 +899,41 @@
             currentKeyProject = projectId;
 
             try {
-                const res = await fetch('/api/list-keys?projectId=' + projectId, {
+                const url = '/api/list-keys?projectId=' + projectId;
+                console.log('🔑 CHAMANDO URL:', url);
+                console.log('🔑 TOKEN:', token ? 'EXISTE' : 'NÃO EXISTE');
+                
+                const res = await fetch(url, {
                     headers: { 'Authorization': 'Bearer ' + token }
                 });
+                
+                console.log('🔑 RESPONSE STATUS:', res.status);
+                console.log('🔑 RESPONSE OK:', res.ok);
+                
                 const data = await res.json();
+                console.log('🔑 DADOS COMPLETOS RECEBIDOS:', JSON.stringify(data, null, 2));
+                console.log('🔑 DATA.SUCCESS:', data.success);
+                console.log('🔑 DATA.KEYS:', data.keys);
                 
                 if (data.success) {
                     const grid = document.getElementById('keysGrid');
                     
+                    console.log('🔑 TOTAL DE KEYS RECEBIDAS:', data.keys.length);
+                    console.log('🔑 ARRAY DE KEYS:', data.keys);
+                    
                     if (data.keys.length === 0) {
+                        console.log('⚠️ NENHUMA KEY ENCONTRADA!');
                         grid.innerHTML = '<div class="empty-state"><h3>Nenhuma key ainda</h3><p>Gere sua primeira key!</p></div>';
                     } else {
+                        console.log('✅ RENDERIZANDO', data.keys.length, 'KEYS...');
+                        
                         grid.innerHTML = data.keys.map(function(k) {
+                            console.log('🔑 PROCESSANDO KEY:', k);
+                            console.log('  - Key:', k.key);
+                            console.log('  - Status:', k.status);
+                            console.log('  - Duration:', k.duration);
+                            console.log('  - HWID:', k.hwid);
+                            
                             const statusBadge = k.status === 'active' ? 'badge-active' : 
                                                 k.status === 'pending' ? 'badge-pending' : 'badge-size';
                             return '<div class="card">' +
@@ -879,10 +949,23 @@
                                 '</div>' +
                             '</div>';
                         }).join('');
+                        
+                        console.log('✅ KEYS RENDERIZADAS COM SUCESSO!');
+                        console.log('✅ HTML GERADO, TAMANHO:', grid.innerHTML.length, 'caracteres');
                     }
+                } else {
+                    console.error('❌ ERRO NA RESPOSTA:', data);
+                    console.error('❌ ERROR MESSAGE:', data.error);
+                    alert('Erro: ' + (data.error || 'Erro desconhecido'));
                 }
             } catch (error) {
-                console.error('Erro ao carregar keys:', error);
+                console.error('❌ ========================================');
+                console.error('❌ ERRO CRÍTICO AO CARREGAR KEYS:');
+                console.error('❌ ERROR:', error);
+                console.error('❌ ERROR MESSAGE:', error.message);
+                console.error('❌ ERROR STACK:', error.stack);
+                console.error('❌ ========================================');
+                alert('Erro ao carregar keys: ' + error.message);
             }
         }
 
@@ -891,6 +974,8 @@
             
             const projectId = document.getElementById('generateKeyProjectSelect').value;
             
+            console.log('🔑 GERANDO KEY PARA PROJETO:', projectId);
+            
             if (!projectId) {
                 alert('Selecione um projeto!');
                 return;
@@ -898,6 +983,8 @@
 
             const duration = document.getElementById('keyDurationInput').value;
             const note = document.getElementById('keyNoteInput').value;
+
+            console.log('🔑 DADOS:', { projectId, duration, note });
 
             try {
                 const res = await fetch('/api/generate-key', {
@@ -909,7 +996,10 @@
                     body: JSON.stringify({ projectId: projectId, duration: duration, note: note })
                 });
 
+                console.log('🔑 RESPONSE STATUS:', res.status);
+
                 if (res.ok) {
+                    console.log('✅ KEY GERADA!');
                     alert('✅ Key gerada com sucesso!');
                     closeModal('generateKey');
                     document.getElementById('formGenerateKey').reset();
@@ -919,12 +1009,15 @@
                     }
                 }
             } catch (error) {
+                console.error('❌ ERRO AO GERAR KEY:', error);
                 alert('Erro ao gerar key');
             }
         }
 
         async function resetHWID(keyId) {
             if (!confirm('Resetar o HWID desta key?')) return;
+
+            console.log('🔄 RESETANDO HWID DA KEY:', keyId);
 
             try {
                 const res = await fetch('/api/reset-hwid', {
@@ -937,16 +1030,20 @@
                 });
 
                 if (res.ok) {
+                    console.log('✅ HWID RESETADO!');
                     alert('✅ HWID resetado!');
                     await loadKeys();
                 }
             } catch (error) {
+                console.error('❌ ERRO AO RESETAR HWID:', error);
                 alert('Erro ao resetar HWID');
             }
         }
 
         async function deleteKey(keyId) {
             if (!confirm('Deletar esta key permanentemente?')) return;
+
+            console.log('🗑️ DELETANDO KEY:', keyId);
 
             try {
                 const res = await fetch('/api/delete-key', {
@@ -959,15 +1056,19 @@
                 });
 
                 if (res.ok) {
+                    console.log('✅ KEY DELETADA!');
                     alert('✅ Key deletada!');
                     await loadKeys();
                 }
             } catch (error) {
+                console.error('❌ ERRO AO DELETAR KEY:', error);
                 alert('Erro ao deletar key');
             }
         }
 
         function showModal(modal) {
+            console.log('📂 ABRINDO MODAL:', modal);
+            
             const modalId = 'modal' + modal.charAt(0).toUpperCase() + modal.slice(1);
             
             if (modal === 'generateKey') {
@@ -984,11 +1085,14 @@
         }
 
         function closeModal(modal) {
+            console.log('📂 FECHANDO MODAL:', modal);
+            
             const modalId = 'modal' + modal.charAt(0).toUpperCase() + modal.slice(1);
             document.getElementById(modalId).classList.remove('show');
         }
 
         function logout() {
+            console.log('🚪 FAZENDO LOGOUT...');
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             window.location.href = '/';
@@ -996,6 +1100,8 @@
 
         function copyLoaderCode() {
             const code = document.getElementById('loaderCodeContent').textContent;
+            console.log('📋 COPIANDO:', code);
+            
             navigator.clipboard.writeText(code).then(function() {
                 alert('✅ URL copiada!');
             });
@@ -1007,6 +1113,7 @@
             }
         }
 
+        console.log('✅ INICIANDO CARREGAMENTO DE PROJETOS...');
         loadProjects();
     </script>
 </body>
