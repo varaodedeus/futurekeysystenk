@@ -4,7 +4,8 @@ import { nanoid } from 'nanoid';
 
 const router = express.Router();
 
-const uri = 'mongodb+srv://script:vPKglLq6l3dglecM@cluster0.xwvbw.mongodb.net/authguard?retryWrites=true&w=majority';
+const uri = 'mongodb+srv://authguard:slazin123@cluster0.sxwnhrt.mongodb.net/baodms?retryWrites=true&w=majority';
+const JWT_SECRET = 'authguard_jwt_secret_2024_super_seguro_X9kP2mZq';
 
 // Middleware de autenticação
 const authMiddleware = async (req, res, next) => {
@@ -13,7 +14,7 @@ const authMiddleware = async (req, res, next) => {
   
   try {
     const jwt = await import('jsonwebtoken');
-    const decoded = jwt.default.verify(token, 'seu_secret_jwt_aqui');
+    const decoded = jwt.default.verify(token, JWT_SECRET);
     req.user = decoded;
     next();
   } catch (error) {
@@ -209,7 +210,7 @@ router.post('/reset-hwid', authMiddleware, async (req, res) => {
   }
 });
 
-// VALIDAR KEY - Simples e direto
+// VALIDAR KEY
 router.post('/validate-key', async (req, res) => {
   let client;
   try {
@@ -225,24 +226,20 @@ router.post('/validate-key', async (req, res) => {
     client = await MongoClient.connect(uri);
     const db = client.db();
 
-    // Busca a key
     const keyDoc = await db.collection('keys').findOne({ key });
 
     if (!keyDoc) {
       return res.status(404).json({ success: false, error: 'Key inválida' });
     }
 
-    // Verifica projeto (se enviado)
     if (projectId && keyDoc.projectId.toString() !== projectId) {
       return res.status(403).json({ success: false, error: 'Key não pertence a este projeto' });
     }
 
-    // Verifica status
     if (keyDoc.status === 'banned') {
       return res.status(403).json({ success: false, error: 'Key banida' });
     }
 
-    // Verifica expiração
     if (keyDoc.expiresAt && new Date() > new Date(keyDoc.expiresAt)) {
       await db.collection('keys').updateOne(
         { _id: keyDoc._id },
@@ -251,7 +248,6 @@ router.post('/validate-key', async (req, res) => {
       return res.status(403).json({ success: false, error: 'Key expirada' });
     }
 
-    // PRIMEIRA VEZ? Registra HWID
     if (keyDoc.hwid === null) {
       const now = new Date();
       const expiresAt = keyDoc.duration === 0 ? null : new Date(now.getTime() + keyDoc.duration * 24 * 60 * 60 * 1000);
@@ -280,11 +276,9 @@ router.post('/validate-key', async (req, res) => {
         }
       );
       
-    // HWID diferente? ERRO
     } else if (keyDoc.hwid !== hwid) {
       return res.status(403).json({ success: false, error: 'HWID não corresponde' });
       
-    // OK! Atualiza uso
     } else {
       await db.collection('keys').updateOne(
         { _id: keyDoc._id },
@@ -300,7 +294,6 @@ router.post('/validate-key', async (req, res) => {
       );
     }
 
-    // SUCESSO!
     res.status(200).json({
       success: true,
       message: 'Key válida!'
