@@ -15,11 +15,11 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
-console.log('🔥 Registrando rotas...');
+console.log('🔥 REGISTRANDO ROTAS...');
 app.use('/api', authRoutes);
 app.use('/api', projectRoutes);
 app.use('/api', keyRoutes);
-console.log('✅ Rotas registradas!');
+console.log('✅ ROTAS REGISTRADAS!');
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'login.html'));
@@ -60,6 +60,10 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local API_URL = "${API_URL}/api/validate-key"
 local PROJECT_ID = "${projectId}"
+
+print("🔐 AuthGuard carregado!")
+print("📡 API:", API_URL)
+print("📁 Project ID:", PROJECT_ID)
 
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "AuthGuardUI"
@@ -225,12 +229,18 @@ local function validateAndExecute()
     
     local hwid = getHWID()
     
+    print("🔍 Validando key:", key)
+    print("🔍 HWID:", hwid)
+    print("🔍 API:", API_URL)
+    
     local success, response = pcall(function()
         local jsonRequest = HttpService:JSONEncode({
             key = key,
             hwid = hwid,
             projectId = PROJECT_ID
         })
+        
+        print("📤 Enviando request...")
         
         local jsonResponse = HttpService:PostAsync(
             API_URL,
@@ -239,10 +249,13 @@ local function validateAndExecute()
             false
         )
         
+        print("📥 Response recebida:", jsonResponse)
+        
         return HttpService:JSONDecode(jsonResponse)
     end)
     
     if success and response.success then
+        print("✅ Validação OK!")
         notify("✅ Valid! Executing...", Color3.fromRGB(16, 185, 129))
         ExecuteButton.BackgroundColor3 = Color3.fromRGB(16, 185, 129)
         ExecuteButton.Text = "✅ EXECUTING..."
@@ -262,6 +275,7 @@ local function validateAndExecute()
         end
     else
         local errorMsg = response and response.error or "Connection error"
+        print("❌ Erro:", errorMsg)
         notify("❌ " .. errorMsg, Color3.fromRGB(239, 68, 68))
         ExecuteButton.BackgroundColor3 = Color3.fromRGB(14, 165, 233)
         ExecuteButton.Text = "🚀 VALIDATE & EXECUTE"
@@ -291,7 +305,7 @@ CloseButton.MouseLeave:Connect(function()
     CloseButton.BackgroundColor3 = Color3.fromRGB(239, 68, 68)
 end)
 
-print("🔐 AuthGuard loaded!")`;
+print("✅ AuthGuard UI carregada!")`;
   
   res.setHeader('Content-Type', 'text/plain');
   res.send(loaderCode);
