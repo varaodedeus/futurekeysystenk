@@ -200,10 +200,11 @@
             display: flex;
             gap: 8px;
             margin-top: 20px;
+            flex-wrap: wrap;
         }
         
         .btn-small {
-            padding: 10px 20px;
+            padding: 10px 16px;
             border: none;
             border-radius: 8px;
             cursor: pointer;
@@ -211,6 +212,7 @@
             font-weight: 600;
             transition: all 0.3s ease;
             flex: 1;
+            min-width: 120px;
         }
         
         .btn-view {
@@ -323,7 +325,7 @@
         
         .form-group textarea {
             resize: vertical;
-            min-height: 200px;
+            min-height: 100px;
             font-family: 'Space Mono', monospace;
             font-size: 14px;
         }
@@ -370,6 +372,7 @@
             border-radius: 12px;
             margin: 24px 0;
             border: 1px solid rgba(148, 163, 184, 0.2);
+            position: relative;
         }
         
         .loader-code code {
@@ -377,7 +380,6 @@
             font-size: 14px;
             color: #10b981;
             display: block;
-            white-space: pre-wrap;
             word-break: break-all;
             line-height: 1.6;
         }
@@ -467,6 +469,28 @@
         .chart-container canvas {
             max-height: 300px;
         }
+
+        .key-selector {
+            margin-bottom: 24px;
+        }
+
+        .key-selector label {
+            color: #94a3b8;
+            font-size: 14px;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .key-selector select {
+            width: 100%;
+            max-width: 400px;
+            padding: 12px;
+            background: rgba(30, 41, 59, 0.5);
+            border: 2px solid rgba(148, 163, 184, 0.2);
+            border-radius: 12px;
+            color: var(--light);
+            font-size: 16px;
+        }
     </style>
 </head>
 <body>
@@ -482,11 +506,11 @@
 
     <div class="tabs">
         <button class="tab active" onclick="switchTab('projects')">📁 Projetos</button>
-        <button class="tab" onclick="switchTab('scripts')">📜 Scripts</button>
         <button class="tab" onclick="switchTab('keys')">🔑 Keys</button>
     </div>
 
     <div class="content">
+        <!-- TAB PROJETOS -->
         <div id="tab-projects" class="tab-content active">
             <div class="header">
                 <h2>Meus Projetos</h2>
@@ -495,60 +519,102 @@
             <div id="projectsGrid" class="cards-grid"></div>
         </div>
 
-        <div id="tab-scripts" class="tab-content">
+        <!-- TAB KEYS -->
+        <div id="tab-keys" class="tab-content">
             <div class="header">
-                <h2>Meus Scripts</h2>
-                <button class="btn-primary" onclick="showModal('uploadScript')">📤 Upload Script</button>
+                <h2>Minhas Keys</h2>
+                <button class="btn-primary" onclick="showModal('generateKey')">+ Gerar Key</button>
             </div>
             
-            <div style="margin-bottom: 24px;">
-                <label style="color: #94a3b8; font-size: 14px; margin-bottom: 8px; display: block;">Selecione o Projeto:</label>
-                <select id="scriptProjectSelect" onchange="loadScripts()" style="width: 300px; padding: 12px; background: rgba(30, 41, 59, 0.5); border: 2px solid rgba(148, 163, 184, 0.2); border-radius: 12px; color: var(--light); font-size: 16px;">
+            <div class="key-selector">
+                <label>Selecione o Projeto:</label>
+                <select id="keyProjectSelect" onchange="loadKeys()">
                     <option value="">Selecione um projeto</option>
                 </select>
             </div>
 
-            <div id="scriptsGrid" class="cards-grid"></div>
-        </div>
-
-        <div id="tab-keys" class="tab-content">
-            <div class="header">
-                <h2>Minhas Keys</h2>
-                <div>
-                    <label style="color: #94a3b8; font-size: 14px; margin-bottom: 8px; display: block;">Selecione o Projeto:</label>
-                    <select id="keyProjectSelect" onchange="loadKeys()" style="width: 300px; padding: 12px; background: rgba(30, 41, 59, 0.5); border: 2px solid rgba(148, 163, 184, 0.2); border-radius: 12px; color: var(--light); font-size: 16px; margin-right: 16px;">
-                        <option value="">Selecione um projeto</option>
-                    </select>
-                    <button class="btn-primary" onclick="showModal('generateKey')" style="display: inline-block;">+ Gerar Key</button>
-                </div>
-            </div>
             <div id="keysGrid" class="cards-grid"></div>
         </div>
     </div>
 
-    <!-- MODAIS -->
-    <div id="modalCreateProject" class="modal"><div class="modal-content"><h3>Criar Novo Projeto</h3><form id="formCreateProject" onsubmit="createProject(event)"><div class="form-group"><label>Nome do Projeto *</label><input type="text" id="projectNameInput" placeholder="Ex: Meu Script Premium" required></div><div class="form-group"><label>Descrição</label><textarea id="projectDescInput" placeholder="Opcional" style="min-height: 100px;"></textarea></div><div class="modal-actions"><button type="button" class="btn-secondary" onclick="closeModal('createProject')">Cancelar</button><button type="submit" class="btn-primary">Criar</button></div></form></div></div>
+    <!-- MODAL CRIAR PROJETO -->
+    <div id="modalCreateProject" class="modal">
+        <div class="modal-content">
+            <h3>Criar Novo Projeto</h3>
+            <form id="formCreateProject" onsubmit="createProject(event)">
+                <div class="form-group">
+                    <label>Nome do Projeto *</label>
+                    <input type="text" id="projectNameInput" placeholder="Ex: Meu Script Premium" required>
+                </div>
+                <div class="form-group">
+                    <label>Descrição</label>
+                    <textarea id="projectDescInput" placeholder="Opcional"></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeModal('createProject')">Cancelar</button>
+                    <button type="submit" class="btn-primary">Criar</button>
+                </div>
+            </form>
+        </div>
+    </div>
     
-    <div id="modalUploadScript" class="modal"><div class="modal-content"><h3>📤 Upload de Script</h3><form id="formUploadScript" onsubmit="uploadScript(event)"><div class="form-group"><label>Nome do Script *</label><input type="text" id="scriptNameInput" placeholder="Ex: AutoFarm v2.0" required></div><div class="form-group"><label>Projeto *</label><select id="uploadProjectSelect" required><option value="">Selecione um projeto</option></select></div><div class="form-group"><label>Código do Script (OBFUSCADO) *</label><textarea id="scriptContentInput" placeholder="Cole aqui o código LUA já obfuscado..." required></textarea></div><div class="info-box"><p>💡 <strong>Dica:</strong> Obfusque seu script ANTES de fazer upload! Use Prometheus, IronBrew ou outro obfuscador.</p></div><div class="modal-actions"><button type="button" class="btn-secondary" onclick="closeModal('uploadScript')">Cancelar</button><button type="submit" class="btn-primary">📤 Enviar Script</button></div></form></div></div>
+    <!-- MODAL GERAR KEY -->
+    <div id="modalGenerateKey" class="modal">
+        <div class="modal-content">
+            <h3>Gerar Nova Key</h3>
+            <form id="formGenerateKey" onsubmit="generateKey(event)">
+                <div class="form-group">
+                    <label>Duração (dias) *</label>
+                    <input type="number" id="keyDurationInput" placeholder="0 = Lifetime" min="0" value="30" required>
+                </div>
+                <div class="form-group">
+                    <label>Nota</label>
+                    <input type="text" id="keyNoteInput" placeholder="Ex: Cliente João, Pedido #123">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeModal('generateKey')">Cancelar</button>
+                    <button type="submit" class="btn-primary">Gerar</button>
+                </div>
+            </form>
+        </div>
+    </div>
     
-    <div id="modalGenerateKey" class="modal"><div class="modal-content"><h3>Gerar Nova Key</h3><form id="formGenerateKey" onsubmit="generateKey(event)"><div class="form-group"><label>Duração (dias) *</label><input type="number" id="keyDurationInput" placeholder="0 = Lifetime" min="0" value="30" required></div><div class="form-group"><label>Nota</label><input type="text" id="keyNoteInput" placeholder="Ex: Cliente João, Pedido #123"></div><div class="modal-actions"><button type="button" class="btn-secondary" onclick="closeModal('generateKey')">Cancelar</button><button type="submit" class="btn-primary">Gerar</button></div></form></div></div>
-    
-    <div id="modalViewLoader" class="modal"><div class="modal-content" style="max-width: 800px;"><h3 id="loaderTitle">📋 Loader do Script</h3><p style="color: #94a3b8; margin: 20px 0;">Cole este código no Pastebin e compartilhe com seus usuários:</p><div class="loader-code"><code id="loaderCodeContent"></code></div><div class="info-box"><p>💡 <strong>Como usar:</strong><br>1. Copie o código acima<br>2. Cole no Pastebin (pastebin.com) e pegue o link RAW<br>3. Usuário roda: <code style="background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 4px;">_G.SCRIPT_KEY = "KEY-AQUI"<br>loadstring(game:HttpGet("LINK_PASTEBIN"))()</code></p></div><div class="modal-actions"><button type="button" class="btn-secondary" onclick="closeModal('viewLoader')">Fechar</button><button type="button" class="btn-primary" onclick="copyLoaderCode()">📋 Copiar Código</button></div></div></div>
+    <!-- MODAL VER LOADER -->
+    <div id="modalViewLoader" class="modal">
+        <div class="modal-content">
+            <h3 id="loaderTitle">📋 Loader URL</h3>
+            <p style="color: #94a3b8; margin: 20px 0;">Acesse esta URL para obter o código do loader:</p>
+            <div class="loader-code">
+                <code id="loaderCodeContent"></code>
+            </div>
+            <div class="info-box">
+                <p>💡 <strong>Como usar:</strong><br>
+                1. Acesse a URL acima no navegador<br>
+                2. Copie TODO o código que aparecer<br>
+                3. Edite o campo <code>local YOUR_SCRIPT = [[]]</code> e cole SEU script<br>
+                4. Compartilhe no Pastebin</p>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="closeModal('viewLoader')">Fechar</button>
+                <button type="button" class="btn-primary" onclick="copyLoaderCode()">📋 Copiar URL</button>
+            </div>
+        </div>
+    </div>
 
-    <!-- Modal Analytics -->
+    <!-- MODAL ANALYTICS -->
     <div id="modalAnalytics" class="modal">
         <div class="modal-content modal-content-large">
             <h3 id="analyticsTitle">📊 Analytics - Projeto</h3>
             
             <div class="chart-container">
                 <h4>Last Week Statistics</h4>
-                <p style="font-size: 13px; color: #64748b; margin-bottom: 20px;">Showing total statistics for the last 7 days</p>
+                <p style="font-size: 13px; color: #64748b; margin-bottom: 20px;">Últimos 7 dias</p>
                 <canvas id="chartWeekStats"></canvas>
             </div>
 
             <div class="chart-container">
-                <h4>Lastweek Executions</h4>
-                <p style="font-size: 13px; color: #64748b; margin-bottom: 20px;">Showing total executions for the last 7 days</p>
+                <h4>Validations</h4>
+                <p style="font-size: 13px; color: #64748b; margin-bottom: 20px;">Validações dos últimos 7 dias</p>
                 <canvas id="chartExecutions"></canvas>
             </div>
 
