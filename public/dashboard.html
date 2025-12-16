@@ -1,412 +1,589 @@
-let token = localStorage.getItem('token');
-let user = JSON.parse(localStorage.getItem('user') || '{}');
-let allProjects = [];
-let currentKeyProject = null;
-
-if (!token) window.location.href = '/';
-
-document.getElementById('username').textContent = user.username || 'Usuário';
-
-function switchTab(tab) {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    
-    event.target.classList.add('active');
-    document.getElementById(`tab-${tab}`).classList.add('active');
-
-    if (tab === 'projects') loadProjects();
-    if (tab === 'keys') loadProjectsForKeys();
-}
-
-async function loadProjects() {
-    try {
-        const res = await fetch('/api/list-projects', {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await res.json();
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - AuthGuard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
         
-        if (data.success) {
-            allProjects = data.projects;
-            const grid = document.getElementById('projectsGrid');
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #0a0e1a;
+            color: #fff;
+            min-height: 100vh;
+        }
+        
+        nav {
+            background: #1a1f35;
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #2a3550;
+        }
+        
+        nav h1 {
+            color: #0ea5e9;
+            font-size: 24px;
+        }
+        
+        .logout {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            padding: 20px 40px;
+            background: #1a1f35;
+            border-bottom: 2px solid #2a3550;
+        }
+        
+        .tab {
+            padding: 12px 24px;
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            font-size: 16px;
+        }
+        
+        .tab.active {
+            color: #0ea5e9;
+            border-bottom-color: #0ea5e9;
+        }
+        
+        .container {
+            padding: 40px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h2 {
+            font-size: 32px;
+        }
+        
+        .btn {
+            background: #0ea5e9;
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+        }
+        
+        .btn:hover {
+            background: #0284c7;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+        }
+        
+        .card {
+            background: #1a1f35;
+            padding: 24px;
+            border-radius: 12px;
+            border: 1px solid #2a3550;
+        }
+        
+        .card h3 {
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+        
+        .card p {
+            color: #94a3b8;
+            font-size: 14px;
+            margin: 8px 0;
+        }
+        
+        .badges {
+            display: flex;
+            gap: 8px;
+            margin: 15px 0;
+        }
+        
+        .badge {
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            background: #2a3550;
+        }
+        
+        .actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 15px;
+        }
+        
+        .btn-small {
+            padding: 8px 14px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            flex: 1;
+        }
+        
+        .btn-view {
+            background: #0ea5e9;
+            color: white;
+        }
+        
+        .btn-delete {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .modal.show {
+            display: flex;
+        }
+        
+        .modal-box {
+            background: #1a1f35;
+            padding: 30px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 500px;
+        }
+        
+        .modal-box h3 {
+            margin-bottom: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #94a3b8;
+        }
+        
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            background: #0a0e1a;
+            border: 1px solid #2a3550;
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+        }
+        
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+        
+        .btn-cancel {
+            background: #64748b;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .empty {
+            text-align: center;
+            padding: 60px;
+            color: #64748b;
+        }
+        
+        .code-box {
+            background: #0a0e1a;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            word-break: break-all;
+            font-family: monospace;
+            color: #10b981;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <h1>🔐 AuthGuard</h1>
+        <div>
+            <span id="username" style="margin-right: 20px; color: #94a3b8;"></span>
+            <button class="logout" onclick="logout()">Sair</button>
+        </div>
+    </nav>
+    
+    <div class="tabs">
+        <button class="tab active" onclick="switchTab('projects')">📁 Projetos</button>
+        <button class="tab" onclick="switchTab('keys')">🔑 Keys</button>
+    </div>
+    
+    <div class="container">
+        <!-- PROJETOS -->
+        <div id="tab-projects" class="tab-content active">
+            <div class="header">
+                <h2>Meus Projetos</h2>
+                <button class="btn" onclick="openModal('project')">+ Novo Projeto</button>
+            </div>
+            <div id="projectsGrid" class="grid"></div>
+        </div>
+        
+        <!-- KEYS -->
+        <div id="tab-keys" class="tab-content">
+            <div class="header">
+                <h2>Minhas Keys</h2>
+                <button class="btn" onclick="openModal('key')">+ Gerar Key</button>
+            </div>
             
-            if (data.projects.length === 0) {
-                grid.innerHTML = '<div class="empty-state"><h3>Nenhum projeto ainda</h3><p>Crie seu primeiro projeto!</p></div>';
-            } else {
-                grid.innerHTML = data.projects.map(p => `
-                    <div class="card">
-                        <h3>${p.name}</h3>
-                        <p>${p.description || 'Sem descrição'}</p>
-                        <div class="stats-badges">
-                            <span class="badge badge-size">${p.stats?.totalKeys || 0} Keys</span>
-                            <span class="badge badge-active">${p.stats?.activeKeys || 0} Ativas</span>
-                            <span class="badge badge-executions">${p.stats?.totalValidations || 0} Validações</span>
-                        </div>
-                        <div class="card-actions">
-                            <button class="btn-small btn-view" onclick="viewLoader('${p._id}')">📋 Ver Loader</button>
-                            <button class="btn-small btn-analytics" onclick="viewAnalytics('${p._id}', '${p.name.replace(/'/g, "\\'")}')">📊 Analytics</button>
-                            <button class="btn-small btn-delete" onclick="deleteProject('${p._id}', '${p.name.replace(/'/g, "\\'")}')">🗑️ Deletar</button>
-                        </div>
-                    </div>
-                `).join('');
+            <div style="margin-bottom: 20px;">
+                <label style="color: #94a3b8; display: block; margin-bottom: 8px;">Selecione o Projeto:</label>
+                <select id="projectSelect" onchange="loadKeys()" style="width: 300px; padding: 10px; background: #1a1f35; border: 1px solid #2a3550; border-radius: 8px; color: white;">
+                    <option value="">Selecione...</option>
+                </select>
+            </div>
+            
+            <div id="keysGrid" class="grid"></div>
+        </div>
+    </div>
+    
+    <!-- MODAL PROJETO -->
+    <div id="modalProject" class="modal">
+        <div class="modal-box">
+            <h3>Criar Projeto</h3>
+            <div class="form-group">
+                <label>Nome *</label>
+                <input type="text" id="projectName" placeholder="Meu Script">
+            </div>
+            <div class="form-group">
+                <label>Descrição</label>
+                <textarea id="projectDesc" rows="3"></textarea>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeModal('project')">Cancelar</button>
+                <button class="btn" onclick="createProject()">Criar</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- MODAL KEY -->
+    <div id="modalKey" class="modal">
+        <div class="modal-box">
+            <h3>Gerar Key</h3>
+            <div class="form-group">
+                <label>Projeto *</label>
+                <select id="keyProject">
+                    <option value="">Selecione...</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Duração (dias) *</label>
+                <input type="number" id="keyDuration" value="30" min="0">
+                <small style="color: #64748b;">0 = Lifetime</small>
+            </div>
+            <div class="form-group">
+                <label>Nota</label>
+                <input type="text" id="keyNote" placeholder="Cliente João">
+            </div>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeModal('key')">Cancelar</button>
+                <button class="btn" onclick="generateKey()">Gerar</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- MODAL LOADER -->
+    <div id="modalLoader" class="modal">
+        <div class="modal-box">
+            <h3>📋 Loader URL</h3>
+            <p style="color: #94a3b8; margin: 10px 0;">Acesse esta URL no navegador:</p>
+            <div class="code-box" id="loaderURL"></div>
+            <p style="color: #64748b; font-size: 13px; margin: 10px 0;">
+                1. Acesse a URL<br>
+                2. Copie TODO o código<br>
+                3. Edite o campo YOUR_SCRIPT<br>
+                4. Cole no Pastebin
+            </p>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeModal('loader')">Fechar</button>
+                <button class="btn" onclick="copyLoader()">📋 Copiar URL</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let token = localStorage.getItem('token');
+        let user = JSON.parse(localStorage.getItem('user') || '{}');
+        let projects = [];
+        let selectedProject = null;
+        
+        if (!token) window.location.href = '/';
+        
+        document.getElementById('username').textContent = user.username || 'User';
+        
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById('tab-' + tab).classList.add('active');
+            
+            if (tab === 'projects') loadProjects();
+            if (tab === 'keys') {
+                loadProjects().then(() => {
+                    const sel = document.getElementById('projectSelect');
+                    sel.innerHTML = '<option value="">Selecione...</option>' + 
+                        projects.map(p => `<option value="${p._id}">${p.name}</option>`).join('');
+                });
             }
         }
-    } catch (error) {
-        console.error('Erro ao carregar projetos:', error);
-    }
-}
-
-function viewLoader(projectId) {
-    const host = window.location.origin;
-    const loaderURL = `${host}/loader/${projectId}`;
-    
-    document.getElementById('loaderTitle').textContent = `📋 Loader URL`;
-    document.getElementById('loaderCodeContent').textContent = loaderURL;
-    
-    showModal('viewLoader');
-}
-
-async function createProject(e) {
-    e.preventDefault();
-    const name = document.getElementById('projectNameInput').value;
-    const description = document.getElementById('projectDescInput').value;
-
-    try {
-        const res = await fetch('/api/create-project', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ name, description })
-        });
-
-        if (res.ok) {
-            closeModal('createProject');
-            document.getElementById('formCreateProject').reset();
-            await loadProjects();
-        }
-    } catch (error) {
-        alert('Erro ao criar projeto');
-    }
-}
-
-async function deleteProject(projectId, projectName) {
-    if (!confirm(`Deletar "${projectName}" permanentemente?\n\nIsso vai deletar TODAS as keys deste projeto!`)) return;
-
-    try {
-        const res = await fetch('/api/delete-project', {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ projectId })
-        });
-
-        const data = await res.json();
-
-        if (data.success) {
-            alert('✅ Projeto deletado!');
-            await loadProjects();
-        } else {
-            alert('Erro: ' + data.error);
-        }
-    } catch (error) {
-        alert('Erro ao deletar projeto');
-    }
-}
-
-async function viewAnalytics(projectId, projectName) {
-    try {
-        const res = await fetch(`/api/analytics/${projectId}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await res.json();
         
-        if (data.success) {
-            document.getElementById('analyticsTitle').textContent = `📊 Analytics - ${projectName}`;
+        async function loadProjects() {
+            const res = await fetch('/api/list-projects', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
             
-            const dates = Object.keys(data.analytics).map(d => {
-                const date = new Date(d);
-                return `${date.getDate()}/${date.getMonth() + 1}`;
+            if (data.success) {
+                projects = data.projects;
+                const grid = document.getElementById('projectsGrid');
+                
+                if (projects.length === 0) {
+                    grid.innerHTML = '<div class="empty"><h3>Nenhum projeto</h3></div>';
+                } else {
+                    grid.innerHTML = projects.map(p => `
+                        <div class="card">
+                            <h3>${p.name}</h3>
+                            <p>${p.description || 'Sem descrição'}</p>
+                            <div class="badges">
+                                <span class="badge">${p.stats?.totalKeys || 0} Keys</span>
+                                <span class="badge">${p.stats?.activeKeys || 0} Ativas</span>
+                            </div>
+                            <div class="actions">
+                                <button class="btn-small btn-view" onclick="viewLoader('${p._id}')">📋 Loader</button>
+                                <button class="btn-small btn-delete" onclick="deleteProject('${p._id}', '${p.name}')">🗑️</button>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            }
+        }
+        
+        function openModal(type) {
+            if (type === 'key') {
+                const sel = document.getElementById('keyProject');
+                sel.innerHTML = '<option value="">Selecione...</option>' + 
+                    projects.map(p => `<option value="${p._id}">${p.name}</option>`).join('');
+            }
+            document.getElementById('modal' + type.charAt(0).toUpperCase() + type.slice(1)).classList.add('show');
+        }
+        
+        function closeModal(type) {
+            document.getElementById('modal' + type.charAt(0).toUpperCase() + type.slice(1)).classList.remove('show');
+        }
+        
+        async function createProject() {
+            const name = document.getElementById('projectName').value;
+            const description = document.getElementById('projectDesc').value;
+            
+            if (!name) return alert('Digite o nome!');
+            
+            const res = await fetch('/api/create-project', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ name, description })
             });
             
-            const keysCreated = Object.values(data.analytics).map(d => d.keysCreated);
-            const keysActivated = Object.values(data.analytics).map(d => d.keysActivated);
-            const executions = Object.values(data.analytics).map(d => d.executions);
-            
-            createWeekStatsChart(dates, keysCreated, keysActivated);
-            createExecutionsChart(dates, keysActivated, executions);
-            
-            showModal('analytics');
-        }
-    } catch (error) {
-        console.error('Erro ao carregar analytics:', error);
-        alert('Erro ao carregar analytics');
-    }
-}
-
-let weekStatsChart = null;
-let executionsChart = null;
-
-function createWeekStatsChart(labels, keysCreated, keysActivated) {
-    const ctx = document.getElementById('chartWeekStats');
-    
-    if (weekStatsChart) weekStatsChart.destroy();
-    
-    weekStatsChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [
-                {
-                    label: 'Keys Created',
-                    data: keysCreated,
-                    borderColor: '#8b5cf6',
-                    backgroundColor: 'rgba(139, 92, 246, 0.1)',
-                    tension: 0.4
-                },
-                {
-                    label: 'Keys Activated',
-                    data: keysActivated,
-                    borderColor: '#0ea5e9',
-                    backgroundColor: 'rgba(14, 165, 233, 0.1)',
-                    tension: 0.4
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: { legend: { labels: { color: '#94a3b8' } } },
-            scales: {
-                y: { beginAtZero: true, ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148, 163, 184, 0.1)' } },
-                x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148, 163, 184, 0.1)' } }
+            if (res.ok) {
+                closeModal('project');
+                document.getElementById('projectName').value = '';
+                document.getElementById('projectDesc').value = '';
+                loadProjects();
             }
         }
-    });
-}
-
-function createExecutionsChart(labels, premium, defaultKeys) {
-    const ctx = document.getElementById('chartExecutions');
-    
-    if (executionsChart) executionsChart.destroy();
-    
-    executionsChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [
-                {
-                    label: 'Active Keys',
-                    data: premium,
-                    backgroundColor: 'rgba(139, 92, 246, 0.6)',
-                    borderColor: '#8b5cf6',
-                    borderWidth: 1
-                },
-                {
-                    label: 'Executions',
-                    data: defaultKeys,
-                    backgroundColor: 'rgba(14, 165, 233, 0.6)',
-                    borderColor: '#0ea5e9',
-                    borderWidth: 1
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: { legend: { labels: { color: '#94a3b8' } } },
-            scales: {
-                y: { beginAtZero: true, ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148, 163, 184, 0.1)' } },
-                x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148, 163, 184, 0.1)' } }
-            }
-        }
-    });
-}
-
-async function loadProjectsForKeys() {
-    await loadProjects();
-    const select = document.getElementById('keyProjectSelect');
-    
-    select.innerHTML = '<option value="">Selecione um projeto</option>' +
-        allProjects.map(p => `<option value="${p._id}">${p.name}</option>`).join('');
-}
-
-async function loadKeys() {
-    const projectId = document.getElementById('keyProjectSelect').value;
-    if (!projectId) {
-        document.getElementById('keysGrid').innerHTML = '<div class="empty-state"><h3>Selecione um projeto</h3></div>';
-        return;
-    }
-
-    currentKeyProject = projectId;
-
-    try {
-        const res = await fetch(`/api/list-keys?projectId=${projectId}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await res.json();
         
-        if (data.success) {
-            const grid = document.getElementById('keysGrid');
+        async function deleteProject(id, name) {
+            if (!confirm(`Deletar ${name}?`)) return;
             
-            if (data.keys.length === 0) {
-                grid.innerHTML = '<div class="empty-state"><h3>Nenhuma key ainda</h3><p>Gere sua primeira key!</p></div>';
-            } else {
-                grid.innerHTML = data.keys.map(k => {
-                    const statusBadge = k.status === 'active' ? 'badge-active' : 
-                                        k.status === 'pending' ? 'badge-pending' : 'badge-size';
-                    return `
-                    <div class="card">
-                        <h3 class="card-code">${k.key}</h3>
-                        <p>Status: <span class="badge ${statusBadge}">${k.status.toUpperCase()}</span></p>
-                        <p>Duração: ${k.duration === 0 ? 'Lifetime' : k.duration + ' dias'}</p>
-                        <p>Expira: ${k.expiresAt ? new Date(k.expiresAt).toLocaleDateString() : 'Aguardando uso'}</p>
-                        <p>Usos: ${k.usageCount || 0}</p>
-                        ${k.note ? `<p>Nota: ${k.note}</p>` : ''}
-                        <div class="card-actions">
-                            ${k.hwid ? `<button class="btn-small btn-view" onclick="resetHWID('${k._id}')">🔄 Reset HWID</button>` : ''}
-                            <button class="btn-small btn-delete" onclick="deleteKey('${k._id}')">🗑️ Deletar</button>
+            await fetch('/api/delete-project', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ projectId: id })
+            });
+            
+            loadProjects();
+        }
+        
+        function viewLoader(id) {
+            const url = window.location.origin + '/loader/' + id;
+            document.getElementById('loaderURL').textContent = url;
+            document.getElementById('modalLoader').classList.add('show');
+        }
+        
+        function copyLoader() {
+            const text = document.getElementById('loaderURL').textContent;
+            navigator.clipboard.writeText(text);
+            alert('✅ Copiado!');
+        }
+        
+        async function loadKeys() {
+            const projectId = document.getElementById('projectSelect').value;
+            if (!projectId) {
+                document.getElementById('keysGrid').innerHTML = '<div class="empty"><h3>Selecione um projeto</h3></div>';
+                return;
+            }
+            
+            selectedProject = projectId;
+            
+            const res = await fetch(`/api/list-keys?projectId=${projectId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                const grid = document.getElementById('keysGrid');
+                
+                if (data.keys.length === 0) {
+                    grid.innerHTML = '<div class="empty"><h3>Nenhuma key</h3></div>';
+                } else {
+                    grid.innerHTML = data.keys.map(k => `
+                        <div class="card">
+                            <h3 style="font-family: monospace; color: #0ea5e9;">${k.key}</h3>
+                            <p>Status: ${k.status.toUpperCase()}</p>
+                            <p>Duração: ${k.duration === 0 ? 'Lifetime' : k.duration + ' dias'}</p>
+                            <p>Usos: ${k.usageCount || 0}</p>
+                            ${k.note ? `<p>Nota: ${k.note}</p>` : ''}
+                            <div class="actions">
+                                ${k.hwid ? `<button class="btn-small btn-view" onclick="resetHWID('${k._id}')">🔄 Reset</button>` : ''}
+                                <button class="btn-small btn-delete" onclick="deleteKey('${k._id}')">🗑️</button>
+                            </div>
                         </div>
-                    </div>
-                `}).join('');
+                    `).join('');
+                }
             }
         }
-    } catch (error) {
-        console.error('Erro ao carregar keys:', error);
-    }
-}
-
-async function generateKey(e) {
-    e.preventDefault();
-    
-    const projectId = document.getElementById('generateKeyProjectSelect').value;
-    
-    if (!projectId) {
-        alert('Selecione um projeto!');
-        return;
-    }
-
-    const duration = document.getElementById('keyDurationInput').value;
-    const note = document.getElementById('keyNoteInput').value;
-
-    try {
-        const res = await fetch('/api/generate-key', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ projectId: projectId, duration, note })
-        });
-
-        if (res.ok) {
-            alert('✅ Key gerada com sucesso!');
-            closeModal('generateKey');
-            document.getElementById('formGenerateKey').reset();
-            
-            // Se tiver um projeto selecionado na aba Keys, recarrega
-            if (currentKeyProject === projectId) {
-                await loadKeys();
-            }
-        }
-    } catch (error) {
-        alert('Erro ao gerar key');
-    }
-}
-
-async function resetHWID(keyId) {
-    if (!confirm('Resetar o HWID desta key?')) return;
-
-    try {
-        const res = await fetch('/api/reset-hwid', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ keyId })
-        });
-
-        if (res.ok) {
-            alert('✅ HWID resetado!');
-            await loadKeys();
-        }
-    } catch (error) {
-        alert('Erro ao resetar HWID');
-    }
-}
-
-async function deleteKey(keyId) {
-    if (!confirm('Deletar esta key permanentemente?')) return;
-
-    try {
-        const res = await fetch('/api/delete-key', {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ keyId })
-        });
-
-        if (res.ok) {
-            alert('✅ Key deletada!');
-            await loadKeys();
-        }
-    } catch (error) {
-        alert('Erro ao deletar key');
-    }
-}
-
-function showModal(modal) {
-    const modalId = 'modal' + modal.charAt(0).toUpperCase() + modal.slice(1);
-    
-    // Se for modal de gerar key, popula o select
-    if (modal === 'generateKey') {
-        const select = document.getElementById('generateKeyProjectSelect');
-        select.innerHTML = '<option value="">Selecione um projeto</option>' +
-            allProjects.map(p => `<option value="${p._id}">${p.name}</option>`).join('');
         
-        // Se já tem um projeto selecionado na aba Keys, pre-seleciona
-        if (currentKeyProject) {
-            select.value = currentKeyProject;
+        async function generateKey() {
+            const projectId = document.getElementById('keyProject').value;
+            const duration = document.getElementById('keyDuration').value;
+            const note = document.getElementById('keyNote').value;
+            
+            if (!projectId) return alert('Selecione o projeto!');
+            
+            const res = await fetch('/api/generate-key', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ projectId, duration, note })
+            });
+            
+            if (res.ok) {
+                alert('✅ Key gerada!');
+                closeModal('key');
+                document.getElementById('keyDuration').value = '30';
+                document.getElementById('keyNote').value = '';
+                if (selectedProject === projectId) loadKeys();
+            }
         }
-    }
-    
-    document.getElementById(modalId).classList.add('show');
-}
-
-function closeModal(modal) {
-    const modalId = 'modal' + modal.charAt(0).toUpperCase() + modal.slice(1);
-    document.getElementById(modalId).classList.remove('show');
-}
-
-function logout() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    window.location.href = '/';
-}
-
-function copyLoaderCode() {
-    const code = document.getElementById('loaderCodeContent').textContent;
-    navigator.clipboard.writeText(code).then(() => {
-        const btn = event.target;
-        const originalText = btn.textContent;
-        btn.textContent = '✅ Copiado!';
-        btn.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
-        setTimeout(() => {
-            btn.textContent = originalText;
-            btn.style.background = '';
-        }, 2000);
-    });
-}
-
-window.onclick = function(event) {
-    if (event.target.classList.contains('modal')) {
-        event.target.classList.remove('show');
-    }
-}
-
-loadProjects();
+        
+        async function resetHWID(keyId) {
+            if (!confirm('Resetar HWID?')) return;
+            
+            await fetch('/api/reset-hwid', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ keyId })
+            });
+            
+            alert('✅ Resetado!');
+            loadKeys();
+        }
+        
+        async function deleteKey(keyId) {
+            if (!confirm('Deletar key?')) return;
+            
+            await fetch('/api/delete-key', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ keyId })
+            });
+            
+            alert('✅ Deletada!');
+            loadKeys();
+        }
+        
+        function logout() {
+            localStorage.clear();
+            window.location.href = '/';
+        }
+        
+        window.onclick = function(e) {
+            if (e.target.classList.contains('modal')) {
+                e.target.classList.remove('show');
+            }
+        }
+        
+        loadProjects();
+    </script>
+</body>
+</html>
