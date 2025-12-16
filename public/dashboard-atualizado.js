@@ -1,7 +1,6 @@
 let token = localStorage.getItem('token');
 let user = JSON.parse(localStorage.getItem('user') || '{}');
 let allProjects = [];
-let currentScriptProject = null;
 let currentKeyProject = null;
 
 if (!token) window.location.href = '/';
@@ -16,7 +15,6 @@ function switchTab(tab) {
     document.getElementById(`tab-${tab}`).classList.add('active');
 
     if (tab === 'projects') loadProjects();
-    if (tab === 'scripts') loadProjectsForScripts();
     if (tab === 'keys') loadProjectsForKeys();
 }
 
@@ -32,7 +30,7 @@ async function loadProjects() {
             const grid = document.getElementById('projectsGrid');
             
             if (data.projects.length === 0) {
-                grid.innerHTML = '<div class="empty-state"><h3>Nenhum projeto ainda</h3><p>Crie seu primeiro projeto para começar!</p></div>';
+                grid.innerHTML = '<div class="empty-state"><h3>Nenhum projeto ainda</h3><p>Crie seu primeiro projeto!</p></div>';
             } else {
                 grid.innerHTML = data.projects.map(p => `
                     <div class="card">
@@ -44,6 +42,7 @@ async function loadProjects() {
                             <span class="badge badge-executions">${p.stats?.totalValidations || 0} Validações</span>
                         </div>
                         <div class="card-actions">
+                            <button class="btn-small btn-view" onclick="viewLoader('${p._id}')">📋 Ver Loader</button>
                             <button class="btn-small btn-analytics" onclick="viewAnalytics('${p._id}', '${p.name.replace(/'/g, "\\'")}')">📊 Analytics</button>
                             <button class="btn-small btn-delete" onclick="deleteProject('${p._id}', '${p.name.replace(/'/g, "\\'")}')">🗑️ Deletar</button>
                         </div>
@@ -54,6 +53,16 @@ async function loadProjects() {
     } catch (error) {
         console.error('Erro ao carregar projetos:', error);
     }
+}
+
+function viewLoader(projectId) {
+    const host = window.location.origin;
+    const loaderURL = `${host}/loader/${projectId}`;
+    
+    document.getElementById('loaderTitle').textContent = `📋 Loader URL`;
+    document.getElementById('loaderCodeContent').textContent = loaderURL;
+    
+    showModal('viewLoader');
 }
 
 async function createProject(e) {
@@ -82,7 +91,7 @@ async function createProject(e) {
 }
 
 async function deleteProject(projectId, projectName) {
-    if (!confirm(`Deletar "${projectName}" permanentemente?\n\nIsso vai deletar TODAS as keys e scripts deste projeto!`)) return;
+    if (!confirm(`Deletar "${projectName}" permanentemente?\n\nIsso vai deletar TODAS as keys deste projeto!`)) return;
 
     try {
         const res = await fetch('/api/delete-project', {
@@ -97,7 +106,7 @@ async function deleteProject(projectId, projectName) {
         const data = await res.json();
 
         if (data.success) {
-            alert('✅ Projeto deletado com sucesso!');
+            alert('✅ Projeto deletado!');
             await loadProjects();
         } else {
             alert('Erro: ' + data.error);
@@ -143,9 +152,7 @@ let executionsChart = null;
 function createWeekStatsChart(labels, keysCreated, keysActivated) {
     const ctx = document.getElementById('chartWeekStats');
     
-    if (weekStatsChart) {
-        weekStatsChart.destroy();
-    }
+    if (weekStatsChart) weekStatsChart.destroy();
     
     weekStatsChart = new Chart(ctx, {
         type: 'line',
@@ -171,21 +178,10 @@ function createWeekStatsChart(labels, keysCreated, keysActivated) {
         options: {
             responsive: true,
             maintainAspectRatio: true,
-            plugins: {
-                legend: {
-                    labels: { color: '#94a3b8' }
-                }
-            },
+            plugins: { legend: { labels: { color: '#94a3b8' } } },
             scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: { color: '#94a3b8' },
-                    grid: { color: 'rgba(148, 163, 184, 0.1)' }
-                },
-                x: {
-                    ticks: { color: '#94a3b8' },
-                    grid: { color: 'rgba(148, 163, 184, 0.1)' }
-                }
+                y: { beginAtZero: true, ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148, 163, 184, 0.1)' } },
+                x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148, 163, 184, 0.1)' } }
             }
         }
     });
@@ -194,9 +190,7 @@ function createWeekStatsChart(labels, keysCreated, keysActivated) {
 function createExecutionsChart(labels, premium, defaultKeys) {
     const ctx = document.getElementById('chartExecutions');
     
-    if (executionsChart) {
-        executionsChart.destroy();
-    }
+    if (executionsChart) executionsChart.destroy();
     
     executionsChart = new Chart(ctx, {
         type: 'bar',
@@ -222,161 +216,13 @@ function createExecutionsChart(labels, premium, defaultKeys) {
         options: {
             responsive: true,
             maintainAspectRatio: true,
-            plugins: {
-                legend: {
-                    labels: { color: '#94a3b8' }
-                }
-            },
+            plugins: { legend: { labels: { color: '#94a3b8' } } },
             scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: { color: '#94a3b8' },
-                    grid: { color: 'rgba(148, 163, 184, 0.1)' }
-                },
-                x: {
-                    ticks: { color: '#94a3b8' },
-                    grid: { color: 'rgba(148, 163, 184, 0.1)' }
-                }
+                y: { beginAtZero: true, ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148, 163, 184, 0.1)' } },
+                x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148, 163, 184, 0.1)' } }
             }
         }
     });
-}
-
-async function loadProjectsForScripts() {
-    await loadProjects();
-    const select = document.getElementById('scriptProjectSelect');
-    const uploadSelect = document.getElementById('uploadProjectSelect');
-    
-    select.innerHTML = '<option value="">Selecione um projeto</option>' +
-        allProjects.map(p => `<option value="${p._id}">${p.name}</option>`).join('');
-    
-    uploadSelect.innerHTML = '<option value="">Selecione um projeto</option>' +
-        allProjects.map(p => `<option value="${p._id}">${p.name}</option>`).join('');
-}
-
-async function loadScripts() {
-    const projectId = document.getElementById('scriptProjectSelect').value;
-    if (!projectId) {
-        document.getElementById('scriptsGrid').innerHTML = '<div class="empty-state"><h3>Selecione um projeto</h3></div>';
-        return;
-    }
-
-    currentScriptProject = projectId;
-
-    try {
-        const res = await fetch(`/api/list-scripts?projectId=${projectId}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await res.json();
-        
-        if (data.success) {
-            const grid = document.getElementById('scriptsGrid');
-            
-            if (data.scripts.length === 0) {
-                grid.innerHTML = '<div class="empty-state"><h3>Nenhum script ainda</h3><p>Faça upload do seu primeiro script!</p></div>';
-            } else {
-                grid.innerHTML = data.scripts.map(s => `
-                    <div class="card">
-                        <h3>${s.scriptName}</h3>
-                        <p>Script ID: <span class="card-code">${s.scriptId}</span></p>
-                        <p>Upload: ${new Date(s.uploadedAt).toLocaleDateString()}</p>
-                        <div class="stats-badges">
-                            <span class="badge badge-executions">⚡ ${s.executions || 0} execuções</span>
-                            <span class="badge badge-size">📦 ${(s.scriptContent.length / 1024).toFixed(1)} KB</span>
-                        </div>
-                        <div class="card-actions">
-                            <button class="btn-small btn-view" onclick="viewLoader('${s.scriptId}', '${s.scriptName.replace(/'/g, "\\'")}')">📋 Ver Loader</button>
-                            <button class="btn-small btn-delete" onclick="deleteScript('${s.scriptId}')">🗑️ Deletar</button>
-                        </div>
-                    </div>
-                `).join('');
-            }
-        }
-    } catch (error) {
-        console.error('Erro ao carregar scripts:', error);
-    }
-}
-
-async function uploadScript(e) {
-    e.preventDefault();
-    const projectId = document.getElementById('uploadProjectSelect').value;
-    const scriptName = document.getElementById('scriptNameInput').value;
-    const scriptContent = document.getElementById('scriptContentInput').value;
-
-    if (!projectId) {
-        alert('Selecione um projeto!');
-        return;
-    }
-
-    try {
-        const res = await fetch('/api/upload-script', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ projectId, scriptName, scriptContent })
-        });
-
-        const data = await res.json();
-
-        if (data.success) {
-            alert(`✅ Script enviado! Script ID: ${data.scriptId}`);
-            closeModal('uploadScript');
-            document.getElementById('formUploadScript').reset();
-            
-            document.getElementById('scriptProjectSelect').value = projectId;
-            await loadScripts();
-        } else {
-            alert('Erro: ' + data.error);
-        }
-    } catch (error) {
-        alert('Erro ao enviar script');
-    }
-}
-
-function viewLoader(scriptId, scriptName) {
-    const loaderCode = `_G.SCRIPT_KEY = "SUA-KEY-AQUI" -- MUDE AQUI!
-loadstring(game:HttpGet("${window.location.origin}/loader/${scriptId}"))()`;
-
-    document.getElementById('loaderTitle').textContent = `📋 Loader - ${scriptName}`;
-    document.getElementById('loaderCodeContent').textContent = loaderCode;
-    showModal('viewLoader');
-}
-
-function copyLoaderCode() {
-    const code = document.getElementById('loaderCodeContent').textContent;
-    navigator.clipboard.writeText(code).then(() => {
-        const btn = event.target;
-        const originalText = btn.textContent;
-        btn.textContent = '✅ Copiado!';
-        btn.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
-        setTimeout(() => {
-            btn.textContent = originalText;
-            btn.style.background = '';
-        }, 2000);
-    });
-}
-
-async function deleteScript(scriptId) {
-    if (!confirm('Deletar este script permanentemente?')) return;
-
-    try {
-        const res = await fetch('/api/delete-script', {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ scriptId })
-        });
-
-        if (res.ok) {
-            await loadScripts();
-        }
-    } catch (error) {
-        alert('Erro ao deletar script');
-    }
 }
 
 async function loadProjectsForKeys() {
@@ -495,9 +341,7 @@ async function deleteKey(keyId) {
             body: JSON.stringify({ keyId })
         });
 
-        if (res.ok) {
-            await loadKeys();
-        }
+        if (res.ok) await loadKeys();
     } catch (error) {
         alert('Erro ao deletar key');
     }
@@ -517,6 +361,20 @@ function logout() {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     window.location.href = '/';
+}
+
+function copyLoaderCode() {
+    const code = document.getElementById('loaderCodeContent').textContent;
+    navigator.clipboard.writeText(code).then(() => {
+        const btn = event.target;
+        const originalText = btn.textContent;
+        btn.textContent = '✅ Copiado!';
+        btn.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+        setTimeout(() => {
+            btn.textContent = originalText;
+            btn.style.background = '';
+        }, 2000);
+    });
 }
 
 window.onclick = function(event) {
